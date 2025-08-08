@@ -1,12 +1,23 @@
-/** @type {import('tailwindcss').Config} */
+import { fontFamily } from "tailwindcss/defaultTheme";
+
 export default {
-   content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  darkMode: "class",
+  content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        background: "#FAFAFA",
+        text: "#1E1E1E",
+        primary: "#128C7E",
+        accent: "#FFD600",
+        success: "#2ECC71",
+        danger: "#E74C3C",
+      },
+      fontFamily: {
+        heading: ["Poppins", ...fontFamily.sans],
+        body: ["Inter", ...fontFamily.sans],
+      },
+    },
   },
   plugins: [],
-}
-
+};
