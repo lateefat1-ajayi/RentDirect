@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     verificationDocument: { type: String },
     isAdmin: { type: Boolean, default: false },
+    favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Property" }],
+
   },
   { timestamps: true }
 );

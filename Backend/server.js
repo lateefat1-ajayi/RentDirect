@@ -8,6 +8,7 @@ import authRoutes from "./routes/authRoutes.js";
 import propertyRoutes from "./routes/propertyRoutes.js";
 import verificationRoutes from "./routes/verificationRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import favoriteRoutes from "./routes/favoriteRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -24,6 +25,8 @@ app.use("/auth", authRoutes);
 app.use("/property", propertyRoutes);
 app.use("/verify", verificationRoutes);
 app.use("/messages", messageRoutes);
+app.use("/favorites", favoriteRoutes);
+
 
 // error handling (basic)
 app.use((err, req, res, next) => {
