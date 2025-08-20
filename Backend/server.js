@@ -9,6 +9,12 @@ import propertyRoutes from "./routes/propertyRoutes.js";
 import verificationRoutes from "./routes/verificationRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import favoriteRoutes from "./routes/favoriteRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
+import applicationRoutes from "./routes/applicationRoutes.js";
+import leaseRoutes from "./routes/leaseRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import webhookRoutes from "./routes/webhookRoutes.js";
+import revenueRoutes from "./routes/revenueRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -26,7 +32,12 @@ app.use("/property", propertyRoutes);
 app.use("/verify", verificationRoutes);
 app.use("/messages", messageRoutes);
 app.use("/favorites", favoriteRoutes);
-
+app.use("/reviews", reviewRoutes);
+app.use("/applications", applicationRoutes);
+app.use("/leases", leaseRoutes);
+app.use("/payments", paymentRoutes);
+app.use("/webhooks", webhookRoutes);
+app.use("/revenue", revenueRoutes);
 
 // error handling (basic)
 app.use((err, req, res, next) => {
