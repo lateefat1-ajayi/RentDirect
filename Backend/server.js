@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
+import { notFound, errorHandler } from "./middlewares/errorMiddleware.js";
+
 
 import authRoutes from "./routes/authRoutes.js";
 import propertyRoutes from "./routes/propertyRoutes.js";
@@ -16,6 +18,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 import revenueRoutes from "./routes/revenueRoutes.js";
 
+
 dotenv.config();
 const app = express();
 
@@ -25,6 +28,11 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
+
+//error handler
+app.use(notFound);
+app.use(errorHandler);
+
 
 // routes
 app.use("/auth", authRoutes);
