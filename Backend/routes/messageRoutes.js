@@ -4,7 +4,8 @@ import {
   sendMessage,
   getMessagesByProperty,
   getLandlordMessages,
-  getTenantMessages
+  getTenantMessages,
+  deleteMessage
 } from "../controllers/messageController.js";
 
 const router = express.Router();
@@ -17,4 +18,8 @@ router.get("/landlord", protect, getLandlordMessages);
 
 router.get("/tenant", protect, getTenantMessages);
 
+router.delete("/:id", protect, deleteMessage);
+
 export default router;
+
+

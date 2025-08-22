@@ -67,7 +67,7 @@ export const getProperties = async (req, res) => {
       query.location = { $regex: location, $options: "i" };
     }
 
-    // Price filte
+    // Price filter
     if (!minPrice && !maxPrice) {
       query.price = { $gte: 300000, $lte: 2000000 };
     } else {
@@ -96,9 +96,6 @@ export const getProperties = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-
-
 
 
 export const getProperty = async (req, res) => {
