@@ -19,6 +19,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 import revenueRoutes from "./routes/revenueRoutes.js";
 import { setSocketIO } from "./controllers/messageController.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -54,6 +55,7 @@ app.use("/leases", leaseRoutes);
 app.use("/payments", paymentRoutes);
 app.use("/webhooks", webhookRoutes);
 app.use("/revenue", revenueRoutes);
+app.use("/notifications", notificationRoutes);
 
 // Real-time messaging
 io.on("connection", (socket) => {

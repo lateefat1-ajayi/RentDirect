@@ -4,7 +4,7 @@ const reviewSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["property", "tenant"], 
+      enum: ["property", "tenant"],
       required: true,
     },
     property: {
@@ -31,6 +31,10 @@ const reviewSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    isRead: {
+      type: Boolean,
+      default: false,
+    }
   },
   { timestamps: true }
 );
