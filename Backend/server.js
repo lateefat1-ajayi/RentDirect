@@ -20,6 +20,7 @@ import webhookRoutes from "./routes/webhookRoutes.js";
 import revenueRoutes from "./routes/revenueRoutes.js";
 import { setSocketIO } from "./controllers/messageController.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -29,7 +30,7 @@ const server = http.createServer(app);  // <- wrap app with HTTP server
 const io = new Server(server, {
   cors: {
     origin: process.env.FRONTEND_URL || "http://localhost:5173"
-, // your frontend URL
+, 
     methods: ["GET", "POST"],
   },
 });
@@ -39,7 +40,12 @@ setSocketIO(io);
 connectDB();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173", 
+    credentials: true, 
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -56,6 +62,7 @@ app.use("/payments", paymentRoutes);
 app.use("/webhooks", webhookRoutes);
 app.use("/revenue", revenueRoutes);
 app.use("/notifications", notificationRoutes);
+app.use("/users", userRoutes);
 
 // Real-time messaging
 io.on("connection", (socket) => {
@@ -67,8 +74,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("sendMessage", (data) => {
-    // data = { roomId, senderId, message }
-    socket.to(data.roomId).emit("receiveMessage", data); // broadcast to others in room
+    socket.to(data.roomId).emit("receiveMessage", data);
   });
 
   socket.on("disconnect", () => {
@@ -79,6 +85,18 @@ io.on("connection", (socket) => {
 // Error handlers
 app.use(notFound);
 app.use(errorHandler);
+
+app.get("/notifications", (req, res) => {
+  res.json([
+    {
+      _id: "1",
+      type: "message",
+      message: "Welcome to the app!",
+      createdAt: new Date(),
+      read: false,
+    },
+  ]);
+});
 
 // Basic fallback error handling
 app.use((err, req, res, next) => {
