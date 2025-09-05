@@ -54,7 +54,11 @@ export const listFavorites = async (req, res) => {
 
     const user = await User.findById(req.user._id).populate({
       path: "favorites",
-      select: "title price location images status", // adjust fields to your schema
+      select: "title price location images status landlord bedrooms bathrooms size description",
+      populate: {
+        path: "landlord",
+        select: "name email _id profileImage"
+      }
     });
 
     res.json(user.favorites || []);

@@ -6,8 +6,21 @@ export const createProperty = async (req, res) => {
   try {
     const { title, description, price, location, bedrooms, bathrooms, size } = req.body;
 
+    console.log("Creating property - User details:", {
+      userId: req.user._id,
+      userRole: req.user.role,
+      userEmail: req.user.email
+    });
+
     if (!req.user || req.user.role !== "landlord") {
       return res.status(403).json({ message: "Only landlords can create properties" });
+    }
+
+    // Check if landlord is verified
+    if (req.user.verificationStatus !== "approved") {
+      return res.status(403).json({ 
+        message: "Your account needs to be verified by an admin before you can list properties. Please contact support." 
+      });
     }
 
     let images = [];
@@ -28,6 +41,13 @@ export const createProperty = async (req, res) => {
       size,
       landlord: req.user._id,
       images,
+    });
+
+    console.log("Property created successfully:", {
+      propertyId: property._id,
+      title: property.title,
+      landlord: property.landlord,
+      createdAt: property.createdAt
     });
 
     res.status(201).json(property);
@@ -79,7 +99,7 @@ export const getProperties = async (req, res) => {
     const total = await Property.countDocuments(query);
 
     const properties = await Property.find(query)
-      .populate("landlord", "name email")
+      .populate("landlord", "name email _id")
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -97,10 +117,37 @@ export const getProperties = async (req, res) => {
   }
 };
 
+// Get properties for the authenticated landlord
+export const getMyProperties = async (req, res) => {
+  try {
+    console.log("getMyProperties called by user:", {
+      userId: req.user._id,
+      userRole: req.user.role,
+      userEmail: req.user.email
+    });
+
+    if (!req.user || req.user.role !== "landlord") {
+      return res.status(403).json({ message: "Only landlords can view their listings" });
+    }
+
+    console.log("Searching for properties with landlord ID:", req.user._id);
+    const properties = await Property.find({ landlord: req.user._id })
+      .sort({ createdAt: -1 });
+
+    console.log("Properties found:", properties.length);
+    console.log("Sample property:", properties[0]);
+
+    res.json(properties);
+  } catch (error) {
+    console.error("Error fetching landlord properties:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 export const getProperty = async (req, res) => {
   try {
-    const property = await Property.findById(req.params.id).populate("landlord", "name email");
+    const property = await Property.findById(req.params.id).populate("landlord", "name email _id");
     if (!property) return res.status(404).json({ message: "Property not found" });
     res.json(property);
   } catch (error) {
@@ -175,6 +222,22 @@ export const deleteProperty = async (req, res) => {
 
   } catch (error) {
     console.error("Delete property error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Get properties by landlord ID
+export const getPropertiesByLandlord = async (req, res) => {
+  try {
+    const { landlordId } = req.params;
+    
+    const properties = await Property.find({ landlord: landlordId })
+      .populate("landlord", "name email profileImage verificationStatus")
+      .sort({ createdAt: -1 });
+
+    res.json(properties);
+  } catch (error) {
+    console.error("Get properties by landlord error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

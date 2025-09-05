@@ -1,4 +1,3 @@
-// controllers/verificationController.js
 import User from "../models/User.js";
 import { uploadToCloudinary } from "../middlewares/uploadMiddleware.js";
 

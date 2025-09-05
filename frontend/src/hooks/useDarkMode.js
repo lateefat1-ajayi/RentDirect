@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { Switch } from "@headlessui/react";
 
 export default function useDarkMode() {
   const [isDark, setIsDark] = useState(() => {
@@ -16,7 +17,9 @@ export default function useDarkMode() {
     }
   }, [isDark]);
 
-  const toggleDarkMode = () => setIsDark((prev) => !prev);
+  const toggleDarkMode = () => {
+    setIsDark(!isDark);
+  };
 
-  return { isDark, toggleDarkMode };
+  return { isDark, setIsDark, toggleDarkMode };
 }

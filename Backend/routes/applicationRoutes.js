@@ -15,6 +15,8 @@ router.get("/tenant", protect, getTenantApplications);
 
 router.get("/landlord", protect, getLandlordApplications);
 
+router.get("/tenant/:userId", protect, getTenantApplications);
+
 router.put("/:applicationId", protect, updateApplicationStatus);
 
 export default router;

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import HeroImage from "../../assets/HeroImage.jpg";
 import Button from "../ui/Button";
+import { Link } from "react-router-dom";
 
 export default function Hero() {
   return (
@@ -15,8 +16,12 @@ export default function Hero() {
             Our platform connects tenants and landlords with tools to prevent property damage and ensure accountability.
           </p>
           <div className="flex justify-center md:justify-start gap-4">
-            <Button variant="primary" size="md">Get Started</Button>
-            <Button variant="outline" size="md">Learn More</Button>
+           <Link to="/auth/register">
+            <Button variant="outline" size="md">Get Started</Button>
+          </Link>
+           <Link to="/about">
+            <Button variant="primary" size="md">Learn more</Button>
+          </Link>
           </div>
         </div>
 
@@ -24,8 +29,26 @@ export default function Hero() {
         <div className="md:w-1/2 flex justify-center">
           <motion.img
             initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
+            animate={{ 
+              opacity: 1, 
+              y: 0,
+              y: [0, -10, 0],
+              scale: [1, 1.02, 1]
+            }}
+            transition={{ 
+              duration: 0.8, 
+              delay: 0.3,
+              y: {
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              },
+              scale: {
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }
+            }}
             src={HeroImage}
             alt="Hero"
             className="max-w-[400px] md:max-w-[500px] rounded-lg w-full object-contain"

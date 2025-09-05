@@ -33,7 +33,7 @@ export default function WhyChoose() {
               Transparent Pricing
             </h3>
             <p className="text-gray-600 dark:text-gray-300 text-sm">
-              Clear, upfront pricing with no hidden fees. What you see is what you pay.
+              Clear, upfront pricing with transparent platform fees. We charge only 5% on successful transactions to maintain our service.
             </p>
           </div>
         </div>

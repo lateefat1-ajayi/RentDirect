@@ -4,7 +4,7 @@ import Button from "../ui/Button";
 
 export default function CallToAction() {
   return (
-    <section className="bg-primary dark:bg-yellow-400 text-white dark:text-gray-900 py-16 px-6 md:px-12">
+    <section className="bg-gradient-to-br from-teal-600 via-teal-500 to-teal-400 text-white py-16 px-6 md:px-12">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -20,11 +20,11 @@ export default function CallToAction() {
         </p>
 
         <div className="flex justify-center gap-4 flex-wrap">
-          <Link to="/register">
+          <Link to="/auth/register">
             <Button variant="light">Get Started</Button>
           </Link>
           <Link to="/faq">
-            <Button variant="outline" className="border-white text-white dark:border-gray-900 dark:text-gray-900 hover:bg-white dark:hover:bg-gray-900 hover:text-primary dark:hover:text-yellow-400">
+            <Button variant="outline" className="border-white text-white hover:bg-white hover:text-teal-600">
               Learn More
             </Button>
           </Link>

@@ -5,3 +5,25 @@
 body {
   @apply font-body bg-background text-text;
 }
+
+/* React-Toastify theme overrides for a more professional palette */
+:root {
+  --toastify-color-success: #059669; /* emerald-600 */
+  --toastify-color-info: #1d4ed8;    /* blue-700 */
+  --toastify-color-warning: #b45309; /* amber-700 */
+  --toastify-color-error: #b91c1c;   /* red-700 */
+
+  --toastify-text-color-light: #0f172a; /* slate-900 */
+  --toastify-text-color-dark: #e5e7eb;  /* gray-200 */
+  --toastify-toast-background: #ffffff;
+  --toastify-toast-border-radius: 10px;
+  --toastify-toast-box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  --toastify-color-progress-light: rgba(0,0,0,0.2);
+  --toastify-color-progress-dark: rgba(255,255,255,0.3);
+}
+
+.dark {
+  --toastify-toast-background: #111827; /* gray-900 */
+  --toastify-text-color-light: #e5e7eb;
+  --toastify-color-progress-light: rgba(255,255,255,0.25);
+}

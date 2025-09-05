@@ -1,8 +1,8 @@
+import { Outlet } from "react-router-dom";
 import Navbar from "../navbar/Navbar";
+import Sidebar from "../sidebar/Sidebar";
 
-import Sidebar from "../sidebar/Sidebar"
-
-export default function Layout({ children, showNavbar = true, showSidebar = true }) {
+export default function Layout({ showNavbar = true, showSidebar = true }) {
   return (
     <div className="flex min-h-screen">
       {showSidebar && <Sidebar />}
@@ -11,7 +11,7 @@ export default function Layout({ children, showNavbar = true, showSidebar = true
         {showNavbar && <Navbar />}
         
         <main className="flex-1 p-4 bg-gray-100">
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>

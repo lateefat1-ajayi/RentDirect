@@ -1,13 +1,14 @@
 import express from "express";
-import { initiatePayment, verifyPayment } from "../controllers/paymentController.js";
+import { initiatePayment, verifyPayment, getTenantPayments, getLeasePayments, getLandlordPayments } from "../controllers/paymentController.js";
 import { refundPayment } from "../controllers/paymentController.js";
 import { protect, adminOnly } from "../middlewares/authMiddleware.js";
-import { getTenantPayments } from "../controllers/paymentController.js";
 const router = express.Router();
 
-router.post("/initiate", initiatePayment);
+router.post("/initiate", protect, initiatePayment);
 router.get("/verify/:reference", verifyPayment);
 router.get("/history", protect, getTenantPayments);
+router.get("/lease/:leaseId", protect, getLeasePayments);
+router.get("/landlord", protect, getLandlordPayments);
 router.post("/refund", protect, adminOnly, refundPayment);
 
 export default router;

@@ -1,23 +1,45 @@
-import axios from "axios";
 import Payment from "../models/Payment.js";
 import Lease from "../models/Lease.js";
 import Revenue from "../models/Revenue.js";
+import paystack from "../config/paystack.js";
+import { createNotification } from "./notificationController.js"; 
 
 export const initiatePayment = async (req, res) => {
   try {
     const { amount, tenantId, landlordId, leaseId, propertyId, email } = req.body;
 
-    const paystackAmount = amount * 100; // Paystack wants kobo
+    // Check if there's already a successful payment for this lease
+    const existingPayment = await Payment.findOne({ 
+      lease: leaseId, 
+      status: "success" 
+    });
 
-    const response = await axios.post("https://api.paystack.co/transaction/initialize", {
+    if (existingPayment) {
+      return res.status(400).json({ 
+        error: "Payment already completed for this lease",
+        message: "This lease has already been paid for. You cannot make another payment."
+      });
+    }
+
+    // Check if there's a pending payment for this lease
+    const pendingPayment = await Payment.findOne({ 
+      lease: leaseId, 
+      status: "pending" 
+    });
+
+    if (pendingPayment) {
+      return res.status(400).json({ 
+        error: "Payment already initiated",
+        message: "A payment is already in progress for this lease. Please wait for it to complete or contact support if it's been more than 24 hours."
+      });
+    }
+
+    const paystackAmount = amount * 100; // Paystack uses kobo
+
+    const response = await paystack.post("/transaction/initialize", {
       amount: paystackAmount,
       email,
-      metadata: { tenantId, landlordId, leaseId, propertyId }
-    }, {
-      headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        "Content-Type": "application/json"
-      }
+      metadata: { tenantId, landlordId, leaseId, propertyId },
     });
 
     const payment = await Payment.create({
@@ -26,7 +48,7 @@ export const initiatePayment = async (req, res) => {
       tenant: tenantId,
       landlord: landlordId,
       lease: leaseId,
-      property: propertyId
+      property: propertyId,
     });
 
     res.json({ authorizationUrl: response.data.data.authorization_url, payment });
@@ -40,72 +62,189 @@ export const verifyPayment = async (req, res) => {
   try {
     const { reference } = req.params;
 
-    const response = await axios.get(
-      `https://api.paystack.co/transaction/verify/${reference}`,
-      { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` } }
-    );
+    // First verify with Paystack
+    const response = await paystack.get(`/transaction/verify/${reference}`);
+    
+    if (response.data.data.status !== "success") {
+      return res.status(400).json({ error: "Payment not successful" });
+    }
 
-    const payment = await Payment.findOne({ reference });
-    if (!payment) return res.status(404).json({ error: "Payment not found" });
+    // Check if payment already exists
+    let payment = await Payment.findOne({ reference });
+    
+    if (!payment) {
+      // Payment doesn't exist, create it from the reference
+      // Extract lease ID from reference (format: RENT_LEASEID_TIMESTAMP)
+      const referenceParts = reference.split('_');
+      if (referenceParts.length < 3) {
+        return res.status(400).json({ error: "Invalid reference format" });
+      }
+      
+      const leaseId = referenceParts[1];
+      const lease = await Lease.findById(leaseId).populate('property tenant landlord');
+      
+      if (!lease) {
+        return res.status(404).json({ error: "Lease not found" });
+      }
 
-    if (response.data.data.status === "success") {
+      // Create new payment record
+      payment = new Payment({
+        reference: reference,
+        amount: response.data.data.amount, // Amount in kobo
+        tenant: lease.tenant._id,
+        landlord: lease.landlord._id,
+        lease: lease._id,
+        property: lease.property._id,
+        status: "success",
+        paymentMethod: "card",
+        transactionId: response.data.data.id
+      });
+      
+      await payment.save();
+      console.log("Created new payment record:", payment._id);
+    } else {
+      // Payment exists, update status
       payment.status = "success";
       await payment.save();
+    }
 
-      // ✅ Update Lease
-      await Lease.findByIdAndUpdate(payment.lease, { status: "rented" });
+    // Update Lease status
+    await Lease.findByIdAndUpdate(payment.lease, { status: "active" });
 
-      // ✅ Calculate revenue (5% platform fee)
-      const platformFee = Math.round(payment.amount * 0.05);
-      const landlordEarning = payment.amount - platformFee;
+    // Update Property status to "rented" when payment is successful
+    const leaseForProperty = await Lease.findById(payment.lease).populate('property');
+    if (leaseForProperty && leaseForProperty.property) {
+      leaseForProperty.property.status = "rented";
+      await leaseForProperty.property.save();
+    }
 
+    // Calculate revenue (5% platform fee)
+    const platformFee = Math.round(payment.amount * 0.05);
+    const landlordEarning = payment.amount - platformFee;
+
+    // Check if revenue record already exists
+    const existingRevenue = await Revenue.findOne({ payment: payment._id });
+    if (!existingRevenue) {
       await Revenue.create({
         payment: payment._id,
         landlord: payment.landlord,
         platformFee,
         landlordEarning,
       });
-    } else {
-      payment.status = "failed";
-      await payment.save();
     }
+
+    // Create notifications for tenant and landlord
+    const lease = await Lease.findById(payment.lease).populate('property', 'title');
+    
+    // Notify tenant
+    await createNotification(
+      payment.tenant,
+      "payment",
+      "Payment Successful",
+      `Your rent payment of ₦${(payment.amount / 100).toLocaleString()} for ${lease.property.title} has been processed successfully.`,
+      `/user/payments/${payment.lease}`,
+      {},
+      req
+    );
+
+    // Notify landlord
+    await createNotification(
+      payment.landlord,
+      "payment",
+      "Rent Payment Received",
+      `You have received a rent payment of ₦${(payment.amount / 100).toLocaleString()} for ${lease.property.title}.`,
+      `/landlord/transactions`,
+      {},
+      req
+    );
+
+    // Notify admin of successful payment
+    await createNotification(
+      "admin",
+      "payment",
+      "New Rent Payment",
+      `A rent payment of ₦${(payment.amount / 100).toLocaleString()} has been processed for ${lease.property.title}.`,
+      `/admin/payments`,
+      {},
+      req
+    );
 
     res.json({ payment });
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    console.error("Payment verification error:", err.response?.data || err.message);
     res.status(500).json({ error: "Payment verification failed" });
   }
 };
 
-
 export const getTenantPayments = async (req, res) => {
   try {
-    const tenantId = req.user._id; 
+    const tenantId = req.user._id;
 
     const payments = await Payment.find({ tenant: tenantId })
       .populate("property", "title price")
       .sort({ createdAt: -1 });
 
-    res.json(payments);
+    // Convert amounts from kobo to naira for display
+    const paymentsWithFormattedAmounts = payments.map(payment => ({
+      ...payment.toObject(),
+      amountInNaira: payment.amount / 100,
+      formattedAmount: `₦${(payment.amount / 100).toLocaleString()}`
+    }));
+
+    res.json(paymentsWithFormattedAmounts);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
+export const getLeasePayments = async (req, res) => {
+  try {
+    const { leaseId } = req.params;
+
+    const payments = await Payment.find({ lease: leaseId })
+      .populate("property", "title price")
+      .sort({ createdAt: -1 });
+
+    // Convert amounts from kobo to naira for display
+    const paymentsWithFormattedAmounts = payments.map(payment => ({
+      ...payment.toObject(),
+      amountInNaira: payment.amount / 100,
+      formattedAmount: `₦${(payment.amount / 100).toLocaleString()}`
+    }));
+
+    res.json(paymentsWithFormattedAmounts);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const getLandlordPayments = async (req, res) => {
+  try {
+    const landlordId = req.user._id;
+
+    const payments = await Payment.find({ landlord: landlordId })
+      .populate("property", "title price")
+      .populate("tenant", "name email")
+      .sort({ createdAt: -1 });
+
+    // Convert amounts from kobo to naira for display
+    const paymentsWithFormattedAmounts = payments.map(payment => ({
+      ...payment.toObject(),
+      amountInNaira: payment.amount / 100,
+      formattedAmount: `₦${(payment.amount / 100).toLocaleString()}`
+    }));
+
+    res.json(paymentsWithFormattedAmounts);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 export const refundPayment = async (req, res) => {
   try {
     const { reference } = req.body;
 
-    const response = await axios.post(
-      "https://api.paystack.co/refund",
-      { transaction: reference },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        },
-      }
-    );
+    const response = await paystack.post("/refund", { transaction: reference });
 
     res.json(response.data);
   } catch (err) {

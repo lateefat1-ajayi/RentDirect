@@ -7,7 +7,9 @@ import {
   getProperties,
   getProperty,
   updateProperty,
-  deleteProperty
+  deleteProperty,
+  getMyProperties,
+  getPropertiesByLandlord
 } from "../controllers/propertyController.js";
 
 const router = express.Router();
@@ -20,5 +22,11 @@ router.route("/:id")
   .get(getProperty)
   .put(protect, isLandlord, updateProperty)
   .delete(protect, isLandlord, deleteProperty);
+
+// Landlord's own listings
+router.get("/landlord/me", protect, isLandlord, getMyProperties);
+
+// Get properties by landlord ID
+router.get("/landlord/:landlordId", getPropertiesByLandlord);
 
 export default router;

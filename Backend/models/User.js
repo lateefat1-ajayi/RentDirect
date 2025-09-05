@@ -9,11 +9,37 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["tenant", "landlord", "admin"], default: "tenant" },
     phone: { type: String },
     profileImage: { type: String, default: "" },
-    isVerified: { type: Boolean, default: false },
-    verificationDocument: { type: String },
-    isAdmin: { type: Boolean, default: false },
+    status: { type: String, enum: ["active", "suspended", "pending"], default: "active" },
+    verificationStatus: { type: String, enum: ["pending", "approved", "rejected"] },
+    verificationDocuments: {
+      businessName: { type: String },
+      businessAddress: { type: String },
+      phoneNumber: { type: String },
+      identificationType: { type: String },
+      identificationNumber: { type: String },
+      bankName: { type: String },
+      accountNumber: { type: String },
+      accountName: { type: String },
+      documents: {
+        identification: { type: String },
+        utilityBill: { type: String },
+        bankStatement: { type: String },
+        propertyDocuments: { type: String }
+      },
+      submittedAt: { type: Date }
+    },
+    verificationNote: { type: String },
+    verifiedAt: { type: Date },
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    lastLogin: { type: Date },
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Property" }],
-
+    confirmationToken: { type: String },
+    isConfirmed: { type: Boolean, default: false },
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date },
+    businessName: { type: String },
+    bankName: { type: String },
+    bankAccount: { type: String },
   },
   { timestamps: true }
 );

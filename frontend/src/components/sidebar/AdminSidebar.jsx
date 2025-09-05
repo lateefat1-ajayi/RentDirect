@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { FaHome, FaEnvelope, FaUserShield, FaUser, FaBuilding } from "react-icons/fa";
+import { FaHome, FaEnvelope, FaUserShield, FaUser, FaBuilding, FaFileAlt, FaChartBar, FaBell } from "react-icons/fa";
 import { cn } from "../../lib/utils";
 import Logo from "../../assets/logo.png";
 
@@ -29,19 +29,36 @@ export default function AdminSidebar() {
           <span>Dashboard</span>
         </Link>
 
-        <Link to="/admin/messages" className={linkClass("/admin/messages")}>
-          <FaEnvelope className="w-4 h-4" />
-          <span>Messages</span>
-        </Link>
+
 
         <Link to="/admin/users" className={linkClass("/admin/users")}>
           <FaUserShield className="w-4 h-4" />
           <span>Users</span>
         </Link>
 
+        <Link to="/admin/contacts" className={linkClass("/admin/contacts")}>
+          <FaEnvelope className="w-4 h-4" />
+          <span>Contacts</span>
+        </Link>
+
+        <Link to="/admin/notifications" className={linkClass("/admin/notifications")}>
+          <FaBell className="w-4 h-4" />
+          <span>Notifications</span>
+        </Link>
+
         <Link to="/admin/landlords" className={linkClass("/admin/landlords")}>
           <FaBuilding className="w-4 h-4" />
           <span>Landlords</span>
+        </Link>
+
+        <Link to="/admin/properties" className={linkClass("/admin/properties")}>
+          <FaFileAlt className="w-4 h-4" />
+          <span>Review Properties</span>
+        </Link>
+
+        <Link to="/admin/reports" className={linkClass("/admin/reports")}>
+          <FaChartBar className="w-4 h-4" />
+          <span>View Reports</span>
         </Link>
 
         <Link to="/admin/profile" className={linkClass("/admin/profile")}>

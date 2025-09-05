@@ -25,20 +25,23 @@ export default function PasswordInput({
         type={show ? "text" : "password"}
         className={clsx(
           "w-full border text-sm px-3 py-2 rounded-lg outline-none transition",
-          disabled ? "bg-muted cursor-not-allowed" : "bg-white",
-          error ? "border-red-500" : "border-border focus:ring-1 focus:ring-primary"
+          disabled ? "bg-muted cursor-not-allowed" : "bg-white dark:bg-gray-900",
+          error
+            ? "border-red-500"
+            : "border-border focus:ring-1 focus:ring-primary"
         )}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
         disabled={disabled}
       />
-      <span
+      <button
+        type="button"
         onClick={() => setShow((prev) => !prev)}
-        className="absolute right-3 top-8 text-sm cursor-pointer text-muted-foreground"
+        className="absolute right-3 top-8 text-sm cursor-pointer text-gray-600 dark:text-gray-300 hover:text-primary"
       >
         {show ? "Hide" : "Show"}
-      </span>
+      </button>
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );

@@ -3,6 +3,7 @@ export const colors = {
   accent: '#FFD600',
   success: '#2ECC71',
   danger: '#E74C3C',
+  warning: '#F59E0B',
   textDark: '#1E1E1E',
   background: '#FAFAFA',
 };
