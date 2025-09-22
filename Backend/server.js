@@ -25,6 +25,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 import { sendEmail } from "./utils/mailer.js";
 
 dotenv.config();
@@ -141,6 +142,7 @@ app.use("/notifications", notificationRoutes);
 app.use("/users", userRoutes);
 app.use("/admin", adminRoutes);
 app.use("/contact", contactRoutes);
+app.use("/reports", reportRoutes);
 
 // Socket authentication middleware
 io.use(async (socket, next) => {
@@ -189,6 +191,17 @@ io.on("connection", (socket) => {
   socket.on("joinRoom", (roomId) => {
     socket.join(roomId);
     console.log(`${socket.userEmail} joined room ${roomId}`);
+  });
+
+  // Typing indicator events
+  socket.on("typing", ({ roomId, isTyping }) => {
+    if (!roomId) return;
+    // Broadcast to everyone else in the room that this user is typing
+    socket.to(roomId).emit("typing", {
+      conversationId: roomId,
+      userId: socket.userId,
+      isTyping: !!isTyping,
+    });
   });
 
   // Handle sending a message

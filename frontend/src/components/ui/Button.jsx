@@ -3,10 +3,11 @@ import clsx from "clsx";
 export default function Button({
   children,
   variant = "primary",
-  size = "sm",
+  size = "md",
   className = "",
   isLoading = false,
   disabled = false,
+  type = "button",
   ...props
 }) {
   const base =
@@ -38,6 +39,7 @@ export default function Button({
 
   return (
     <button
+      type={type}
       disabled={isDisabled}
       className={clsx(
         base,

@@ -25,6 +25,11 @@ const leaseSchema = new mongoose.Schema(
       enum: ["pending", "active", "terminated"],
       default: "pending",
     },
+    // Digital signatures and finalized document
+    tenantSignatureUrl: { type: String, default: "" },
+    landlordSignatureUrl: { type: String, default: "" },
+    signedAt: { type: Date },
+    leaseDocumentUrl: { type: String, default: "" },
   },
   { timestamps: true }
 );

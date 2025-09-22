@@ -15,7 +15,7 @@ import {
 const router = express.Router();
 
 router.route("/")
-  .post(protect, isLandlord, upload.array("images", 5), createProperty)
+  .post(protect, isLandlord, upload.array("images", 8), createProperty)
   .get(getProperties);
 
 router.route("/:id")

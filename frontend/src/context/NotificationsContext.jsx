@@ -10,6 +10,14 @@ export const NotificationsProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchNotifications = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      // Not authenticated; skip fetching
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return [];
+    }
     try {
       setLoading(true);
       const data = await apiFetch("/notifications").catch(() => []);
@@ -37,11 +45,14 @@ export const NotificationsProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // Only fetch notifications once on mount
-    fetchNotifications();
-
-    // Ensure socket is authenticated and connected
-    ensureSocketAuth();
+    // Only fetch notifications and connect socket if authenticated
+    const token = localStorage.getItem("token");
+    if (token) {
+      fetchNotifications();
+      ensureSocketAuth();
+    } else {
+      setLoading(false);
+    }
 
     // Set up notification listener on the shared socket
     const handleNotification = (notif) => {

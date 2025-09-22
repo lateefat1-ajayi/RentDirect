@@ -18,6 +18,17 @@ const propertySchema = new mongoose.Schema(
       type: String,
       required: [true, "Location is required"],
     },
+    address: {
+      street: { type: String },
+      city: { type: String },
+      state: { type: String },
+      postalCode: { type: String },
+      country: { type: String, default: "Nigeria" }
+    },
+    coordinates: {
+      latitude: { type: Number },
+      longitude: { type: Number }
+    },
     images: [
       {
         url: String,
@@ -26,7 +37,9 @@ const propertySchema = new mongoose.Schema(
     ],
     bedrooms: { type: Number, default: 0 },
     bathrooms: { type: Number, default: 0 },
-    size: { type: Number }, // in sq ft or m²
+    size: { type: Number }, // in sq ft or m² (optional)
+    type: { type: String, default: "Apartment" }, // Property type
+    amenities: [{ type: String }], // Property amenities
     landlord: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -34,9 +47,13 @@ const propertySchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["available", "rented", "under_maintenance"],
-      default: "available",
+      enum: ["pending", "active", "available", "rented", "rejected", "inactive"],
+      default: "pending",
     },
+    approvedAt: { type: Date },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    rejectedAt: { type: Date },
+    rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );

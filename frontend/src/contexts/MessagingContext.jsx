@@ -14,11 +14,12 @@ export const useMessaging = () => {
   return context;
 };
 
-export const MessagingProvider = ({ children, userRole, profile }) => {
+export const MessagingProvider = ({ children, userRole, profile, initialConversationId }) => {
   const [conversations, setConversations] = useState([]);
-  const [selectedConversationId, setSelectedConversationId] = useState(null);
+  const [selectedConversationId, setSelectedConversationId] = useState(initialConversationId || null);
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [partnerTypingByConv, setPartnerTypingByConv] = useState({});
 
   // Debug logging
   useEffect(() => {
@@ -35,9 +36,18 @@ export const MessagingProvider = ({ children, userRole, profile }) => {
   const fetchConversations = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // Check if profile is available
+      if (!profile?._id || !profile?.role) {
+        console.log("MessagingContext - Cannot fetch conversations: profile not available");
+        return;
+      }
+      
       ensureSocketAuth();
       
       const endpoint = userRole === 'landlord' ? '/conversations?role=landlord' : '/conversations?role=tenant';
+      console.log("MessagingContext - Fetching conversations from:", endpoint);
+      
       const data = await apiFetch(endpoint);
       
       console.log(`MessagingContext - Fetched ${userRole} conversations:`, data);
@@ -51,19 +61,57 @@ export const MessagingProvider = ({ children, userRole, profile }) => {
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
       toast.error('Failed to load conversations');
+      setConversations([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
-  }, [userRole, selectedConversationId]);
+  }, [userRole, selectedConversationId, profile?._id, profile?.role]);
 
   // Load conversations on mount and when userRole changes
   useEffect(() => {
-    if (profile?._id) {
+    if (profile?._id && profile?.role) {
+      console.log("MessagingContext - Profile available, fetching conversations:", {
+        profileId: profile._id,
+        profileRole: profile.role,
+        userRole
+      });
       // Ensure socket is authenticated before fetching conversations
       ensureSocketAuth();
       fetchConversations();
+    } else {
+      console.log("MessagingContext - Profile not available yet:", {
+        profileId: profile?._id,
+        profileRole: profile?.role,
+        userRole
+      });
     }
-  }, [profile?._id, userRole]); // Removed fetchConversations from dependencies
+  }, [profile?._id, profile?.role, userRole]); // Added profile.role to dependencies
+
+  // Select conversation and join room
+  const selectConversation = useCallback((conversationId) => {
+    // If conversationId is null, just clear the selection (close chat)
+    if (!conversationId) {
+      setSelectedConversationId(null);
+      return;
+    }
+    
+    // If selecting the same conversation, do nothing
+    if (conversationId === selectedConversationId) return;
+    
+    // Select new conversation and join room
+    setSelectedConversationId(conversationId);
+    joinRoom(conversationId);
+  }, [selectedConversationId]);
+
+  // Handle initial conversation selection when conversations are loaded
+  useEffect(() => {
+    if (initialConversationId && conversations.length > 0 && !selectedConversationId) {
+      const targetConversation = conversations.find(c => c.id === initialConversationId);
+      if (targetConversation) {
+        selectConversation(initialConversationId);
+      }
+    }
+  }, [initialConversationId, conversations, selectedConversationId, selectConversation]);
 
   // Send message function
   const sendMessage = useCallback(async (conversationId, text) => {
@@ -190,24 +238,19 @@ export const MessagingProvider = ({ children, userRole, profile }) => {
     }
   });
 
-  // Select conversation and join room
-  const selectConversation = useCallback((conversationId) => {
-    // If conversationId is null, just clear the selection (close chat)
-    if (!conversationId) {
-      setSelectedConversationId(null);
-      return;
+  // Listen for typing events
+  useSocket((data) => {
+    if (data && data.conversationId && typeof data.isTyping === 'boolean') {
+      setPartnerTypingByConv((prev) => ({
+        ...prev,
+        [data.conversationId]: data.isTyping
+      }));
     }
-    
-    // If selecting the same conversation, do nothing
-    if (conversationId === selectedConversationId) return;
-    
-    // Select new conversation and join room
-    setSelectedConversationId(conversationId);
-    joinRoom(conversationId);
-  }, [selectedConversationId]);
+  });
 
   // Get selected conversation
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
+  const partnerTyping = selectedConversationId ? !!partnerTypingByConv[selectedConversationId] : false;
 
   const value = {
     conversations,
@@ -217,7 +260,8 @@ export const MessagingProvider = ({ children, userRole, profile }) => {
     sendingMessage,
     sendMessage,
     selectConversation,
-    fetchConversations
+    fetchConversations,
+    partnerTyping
   };
 
   return (

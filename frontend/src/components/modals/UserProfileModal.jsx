@@ -1,16 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 import Avatar from "../ui/Avatar";
 import { useNavigate } from "react-router-dom";
-import { FaEnvelope, FaPhone, FaCalendar, FaHome, FaStar, FaComment, FaEye } from "react-icons/fa";
+import { FaEnvelope, FaPhone, FaCalendar, FaHome, FaStar, FaComment, FaEye, FaHistory, FaUserCheck } from "react-icons/fa";
+import { apiFetch } from "../../lib/api";
 
 export default function UserProfileModal({ isOpen, onClose, user, currentUser }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [userDetails, setUserDetails] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   // Debug logging
   console.log("UserProfileModal props:", { isOpen, user, currentUser });
+
+  // Fetch detailed user information when modal opens
+  useEffect(() => {
+    if (isOpen && user && currentUser?.role === "admin") {
+      fetchUserDetails();
+    }
+  }, [isOpen, user, currentUser]);
+
+  const fetchUserDetails = async () => {
+    if (!user?._id) return;
+    
+    try {
+      setDetailsLoading(true);
+      console.log("Fetching user details for:", user._id);
+      const details = await apiFetch(`/admin/users/${user._id}`);
+      console.log("User details fetched:", details);
+      setUserDetails(details);
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
   if (!user) {
     console.log("UserProfileModal: No user provided");
@@ -123,48 +149,66 @@ export default function UserProfileModal({ isOpen, onClose, user, currentUser })
         {/* Activity Summary */}
         <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
           <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-sm">Activity Summary</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {user.role === "landlord" && (
+          {detailsLoading ? (
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {user.role === "landlord" && (
+                <div className="flex items-center space-x-2">
+                  <FaHome className="w-3 h-3 text-blue-500" />
+                  <div>
+                    <p className="text-xs font-medium text-gray-900 dark:text-white">
+                      {userDetails?.properties?.length || user.properties?.length || 0}
+                    </p>
+                    <p className="text-xs text-gray-500">Properties</p>
+                  </div>
+                </div>
+              )}
+              {user.role === "tenant" && (
+                <div className="flex items-center space-x-2">
+                  <FaEye className="w-3 h-3 text-green-500" />
+                  <div>
+                    <p className="text-xs font-medium text-gray-900 dark:text-white">
+                      {userDetails?.applications?.length || user.applications?.length || 0}
+                    </p>
+                    <p className="text-xs text-gray-500">Applications</p>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center space-x-2">
-                <FaHome className="w-3 h-3 text-blue-500" />
+                <FaStar className="w-3 h-3 text-yellow-500" />
                 <div>
                   <p className="text-xs font-medium text-gray-900 dark:text-white">
-                    {user.properties?.length || 0}
+                    {userDetails?.totalReviewsGiven || user.givenReviews?.length || 0}
                   </p>
-                  <p className="text-xs text-gray-500">Properties</p>
+                  <p className="text-xs text-gray-500">Given</p>
                 </div>
               </div>
-            )}
-            {user.role === "tenant" && (
               <div className="flex items-center space-x-2">
-                <FaEye className="w-3 h-3 text-green-500" />
+                <FaStar className="w-3 h-3 text-purple-500" />
                 <div>
                   <p className="text-xs font-medium text-gray-900 dark:text-white">
-                    {user.applications?.length || 0}
+                    {userDetails?.totalReviewsReceived || user.receivedReviews?.length || 0}
                   </p>
-                  <p className="text-xs text-gray-500">Applications</p>
+                  <p className="text-xs text-gray-500">Received</p>
                 </div>
               </div>
-            )}
-            <div className="flex items-center space-x-2">
-              <FaStar className="w-3 h-3 text-yellow-500" />
-              <div>
-                <p className="text-xs font-medium text-gray-900 dark:text-white">
-                  {user.reviews?.length || 0}
-                </p>
-                <p className="text-xs text-gray-500">Given</p>
-              </div>
+              {userDetails?.averageRating > 0 && (
+                <div className="flex items-center space-x-2 col-span-2">
+                  <FaUserCheck className="w-3 h-3 text-green-500" />
+                  <div>
+                    <p className="text-xs font-medium text-gray-900 dark:text-white">
+                      {userDetails.averageRating}/5.0
+                    </p>
+                    <p className="text-xs text-gray-500">Average Rating</p>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="flex items-center space-x-2">
-              <FaStar className="w-3 h-3 text-purple-500" />
-              <div>
-                <p className="text-xs font-medium text-gray-900 dark:text-white">
-                  {user.receivedReviews?.length || 0}
-                </p>
-                <p className="text-xs text-gray-500">Received</p>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Verification Status (for landlords) */}
@@ -219,11 +263,11 @@ export default function UserProfileModal({ isOpen, onClose, user, currentUser })
         )}
 
         {/* Recent Reviews (if any) - Limited to 2 for space */}
-        {user.receivedReviews && user.receivedReviews.length > 0 && (
+        {(userDetails?.receivedReviews?.length > 0 || user.receivedReviews?.length > 0) && (
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-sm">Recent Reviews</h3>
             <div className="space-y-2">
-              {user.receivedReviews.slice(0, 2).map((review, index) => (
+              {(userDetails?.receivedReviews || user.receivedReviews || []).slice(0, 2).map((review, index) => (
                 <div key={index} className="border-l-2 border-primary pl-2">
                   <div className="flex items-center space-x-2 mb-1">
                     <div className="flex">
@@ -243,6 +287,26 @@ export default function UserProfileModal({ isOpen, onClose, user, currentUser })
                   <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2">{review.comment}</p>
                   <p className="text-xs text-gray-500 mt-1">
                     {new Date(review.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Activity (Admin only) */}
+        {currentUser?.role === "admin" && userDetails?.recentActivity?.length > 0 && (
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-sm flex items-center gap-2">
+              <FaHistory className="w-3 h-3" />
+              Recent Activity
+            </h3>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {userDetails.recentActivity.slice(0, 5).map((activity, index) => (
+                <div key={index} className="text-xs text-gray-600 dark:text-gray-400 border-l-2 border-gray-200 dark:border-gray-600 pl-2">
+                  <p className="font-medium text-gray-900 dark:text-white">{activity.description}</p>
+                  <p className="text-gray-500">
+                    {new Date(activity.timestamp).toLocaleDateString()} at {new Date(activity.timestamp).toLocaleTimeString()}
                   </p>
                 </div>
               ))}

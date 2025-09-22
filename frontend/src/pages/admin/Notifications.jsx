@@ -127,12 +127,17 @@ export default function AdminNotifications() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Notifications</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-teal-100 dark:bg-teal-900 rounded-lg">
+            <FaBell className="w-5 h-5 text-teal-600 dark:text-teal-300" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Notifications</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {unreadCount > 0 ? `${unreadCount} unread notifications` : 'All caught up!'}
+            </p>
+          </div>
         </div>
         <div className="flex gap-3">
           <select
@@ -145,7 +150,7 @@ export default function AdminNotifications() {
             <option value="read">Read Only</option>
           </select>
           {unreadCount > 0 && (
-            <Button onClick={markAllAsRead} variant="secondary" className="flex items-center gap-2">
+            <Button onClick={markAllAsRead} variant="outline" className="flex items-center gap-2">
               <FaCheckDouble className="w-4 h-4" />
               Mark All Read
             </Button>
@@ -185,14 +190,6 @@ export default function AdminNotifications() {
                     </p>
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <span>{new Date(notification.createdAt).toLocaleString()}</span>
-                      {notification.link && (
-                        <Link 
-                          to={notification.link} 
-                          className="text-primary hover:underline"
-                        >
-                          View Details
-                        </Link>
-                      )}
                     </div>
                   </div>
                 </div>

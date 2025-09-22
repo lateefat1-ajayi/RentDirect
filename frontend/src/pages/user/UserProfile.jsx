@@ -1,26 +1,60 @@
 import { useState, useEffect, useRef } from "react";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
-import { Link } from "react-router-dom";
+import Card from "../../components/ui/Card";
 import Avatar from "../../components/ui/Avatar";
-import { FaCamera } from "react-icons/fa";
+import { FaCamera, FaUser, FaEnvelope, FaPhone, FaMoon, FaSun, FaPalette, FaKey } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useOutletContext } from "react-router-dom";
 import { apiFetch } from "../../lib/api";
+import useDarkMode from "../../hooks/useDarkMode";
 
 export default function UserProfile() {
-  const { profile, setProfile } = useOutletContext(); // profile from context or parent
+  const { profile, setProfile } = useOutletContext();
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: profile?.name || "",
-    email: profile?.email || "",
-    phone: profile?.phone || "",
-    avatar: profile?.profileImage || "",
+    name: "",
+    email: "",
+    phone: ""
   });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const { isDark, toggleDarkMode } = useDarkMode();
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  useEffect(() => {
+    if (profile) {
+      console.log("User Profile Data:", profile);
+      console.log("CreatedAt:", profile.createdAt);
+      setFormData({
+        name: profile.name || "",
+        email: profile.email || "",
+        phone: profile.phone || ""
+      });
+      setLoading(false);
+    }
+  }, [profile]);
+
+
+  const handleUpdateProfile = async () => {
+    try {
+      const updated = await apiFetch("/users/profile", {
+        method: "PUT",
+        body: JSON.stringify(formData)
+      });
+      
+      setProfile(updated);
+      
+      // Update localStorage
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const updatedLocalUser = { ...currentUser, ...updated };
+      localStorage.setItem("user", JSON.stringify(updatedLocalUser));
+      
+      toast.success("Profile updated successfully");
+      setEditing(false);
+    } catch (err) {
+      toast.error("Failed to update profile: " + err.message);
+    }
   };
 
   const handleUpload = async (e) => {
@@ -34,7 +68,7 @@ export default function UserProfile() {
       const preset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "";
       const cloud = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "";
       if (!preset || !cloud) {
-        toast.error("Cloudinary is not configured. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET, then restart.");
+        toast.error("Cloudinary is not configured");
         return;
       }
       data.append("upload_preset", preset);
@@ -45,77 +79,27 @@ export default function UserProfile() {
       });
       const fileData = await res.json();
       if (!res.ok || !fileData.secure_url) {
-        const msg = fileData?.error?.message || "Upload failed";
-        toast.error(msg);
+        toast.error(fileData?.error?.message || "Upload failed");
         return;
       }
-      // Optimistically update local state
-      setFormData((prev) => ({ ...prev, avatar: fileData.secure_url }));
 
-      // Persist to backend and update shared profile so navbar reflects immediately
-      try {
-        const updated = await apiFetch("/users/profile", {
-          method: "PUT",
-          body: JSON.stringify({
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            profileImage: fileData.secure_url,
-          }),
-        });
-        
-        // Update localStorage with the new profile data
-        const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
-        const updatedLocalUser = { ...currentUser, ...updated };
-        localStorage.setItem("user", JSON.stringify(updatedLocalUser));
-        
-        setProfile(updated);
-        setFormData({
-          name: updated.name || "",
-          email: updated.email || "",
-          phone: updated.phone || "",
-          avatar: updated.profileImage || null,
-        });
-        toast.success("Profile picture updated!");
-      } catch (saveErr) {
-        console.error(saveErr);
-        toast.error("Uploaded, but failed to save profile. Try again.");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to upload image.");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    try {
       const updated = await apiFetch("/users/profile", {
         method: "PUT",
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          profileImage: formData.avatar,
-        }),
+        body: JSON.stringify({ profileImage: fileData.secure_url })
       });
       
-      // Update localStorage with the new profile data
+      setProfile(updated);
+      
+      // Update localStorage
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
       const updatedLocalUser = { ...currentUser, ...updated };
       localStorage.setItem("user", JSON.stringify(updatedLocalUser));
       
-      setProfile(updated);
-      setFormData({
-        name: updated.name || "",
-        email: updated.email || "",
-        phone: updated.phone || "",
-        avatar: updated.profileImage || null,
-      });
-      toast.success("Profile updated successfully!");
+      toast.success("Profile picture updated");
     } catch (err) {
-      toast.error(err.message || "Failed to update profile");
+      toast.error("Upload failed: " + err.message);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -123,95 +107,256 @@ export default function UserProfile() {
     try {
       const updated = await apiFetch("/users/profile", {
         method: "PUT",
-        body: JSON.stringify({
-          profileImage: null, // Set to null to remove
-        }),
+        body: JSON.stringify({ profileImage: null })
       });
       
-      // Update localStorage with the new profile data
+      setProfile(updated);
+      
+      // Update localStorage
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
       const updatedLocalUser = { ...currentUser, ...updated };
       localStorage.setItem("user", JSON.stringify(updatedLocalUser));
       
-      setProfile(updated);
-      setFormData(prev => ({
-        ...prev,
-        avatar: null,
-      }));
-      toast.success("Profile picture removed successfully!");
+      toast.success("Profile picture removed");
     } catch (err) {
-      toast.error(err.message || "Failed to remove profile picture");
+      toast.error("Failed to remove profile picture");
     }
   };
 
-  // Keep form in sync if parent profile changes (e.g., after refresh)
-  useEffect(() => {
-    if (profile) {
-      setFormData({
-        name: profile.name || "",
-        email: profile.email || "",
-        phone: profile.phone || "",
-        avatar: profile.profileImage || null,
-      });
-    }
-  }, [profile]);
+  const handleResetPassword = () => {
+    // Navigate to reset password page
+    window.location.href = "/auth/reset-password";
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6 max-w-md">
-      <h1 className="text-xl font-bold">Your Profile</h1>
-
-      {/* Avatar upload */}
-      <div className="flex flex-col items-center gap-4">
-        <div className="relative">
-          <button
-            type="button"
-            aria-label="Change profile picture"
-            className="group relative"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-          >
-            <Avatar name={formData.name} src={formData.avatar} size="w-24 h-24" />
-            <div className="absolute -bottom-1 -right-1 bg-primary text-white rounded-full p-2 shadow group-hover:scale-105 transition">
-              <FaCamera size={14} />
-            </div>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleUpload}
-            disabled={uploading}
-            className="hidden"
-          />
+    <div className="p-6 space-y-6">
+      {/* Role Indicator */}
+      <div className="flex justify-end">
+        <div className="flex items-center space-x-2">
+          <FaUser className="w-5 h-5 text-teal-600" />
+          <span className="text-sm text-teal-600 font-medium">Tenant</span>
         </div>
-        {uploading && <div className="text-xs text-gray-500">Uploading...</div>}
-        
-        {/* Remove Profile Picture Button */}
-        {formData.avatar && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleRemoveProfilePicture}
-            className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
-          >
-            Remove Picture
-          </Button>
-        )}
       </div>
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-700 space-y-2">
-        <div className="text-sm text-gray-600 dark:text-gray-400">Name</div>
-        <div className="font-medium">{formData.name || "-"}</div>
-        <div className="text-sm text-gray-600 dark:text-gray-400">Email</div>
-        <div className="font-medium">{formData.email || "-"}</div>
-        <div className="text-sm text-gray-600 dark:text-gray-400">Phone</div>
-        <div className="font-medium">{formData.phone || "-"}</div>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Profile Card */}
+        <div className="lg:col-span-1">
+          <Card className="p-6">
+            <div className="text-center space-y-4">
+              <div className="relative">
+                <Avatar
+                  src={profile?.profileImage}
+                  name={profile?.name}
+                  size="w-24 h-24"
+                  className="mx-auto"
+                />
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="absolute -bottom-2 -right-2 bg-blue-600 text-white rounded-full p-2 hover:bg-blue-700 transition-colors"
+                  title="Change profile picture"
+                >
+                  <FaCamera className="w-3 h-3" />
+                </button>
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  {profile?.name}
+                </h2>
+                <p className="text-gray-500">Tenant</p>
+              </div>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-center space-x-2">
+                  <FaEnvelope className="w-4 h-4 text-gray-400" />
+                  <span className="text-gray-600">{profile?.email}</span>
+                </div>
+                {profile?.phone && (
+                  <div className="flex items-center justify-center space-x-2">
+                    <FaPhone className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-600">{profile?.phone}</span>
+                  </div>
+                )}
+              </div>
 
-      <div className="flex gap-3">
-        <Link to="/user/settings">
-          <Button variant="outline" size="sm">Edit Profile</Button>
-        </Link>
+              <div className="pt-4 space-y-2">
+                <Button
+                  onClick={() => setEditing(!editing)}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  {editing ? "Cancel Edit" : "Edit Profile"}
+                </Button>
+                {profile?.profileImage && (
+                  <Button
+                    onClick={handleRemoveProfilePicture}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Remove Picture
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Profile Details */}
+        <div className="lg:col-span-2">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Profile Information
+            </h3>
+
+            {editing ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Full Name
+                  </label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter your full name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email Address
+                  </label>
+                  <Input
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Enter your email"
+                    type="email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Phone Number
+                  </label>
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="Enter your phone number"
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <Button
+                    onClick={handleUpdateProfile}
+                    className="flex-1"
+                  >
+                    Save Changes
+                  </Button>
+                  <Button
+                    onClick={() => setEditing(false)}
+                    variant="secondary"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Full Name
+                  </label>
+                  <p className="text-gray-900 dark:text-white">{profile?.name}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email Address
+                  </label>
+                  <p className="text-gray-900 dark:text-white">{profile?.email}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Phone Number
+                  </label>
+                  <p className="text-gray-900 dark:text-white">{profile?.phone || "Not provided"}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Account Status
+                  </label>
+                  <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                    Active
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Member Since
+                  </label>
+                  <p className="text-gray-900 dark:text-white">
+                    {(() => {
+                      if (!profile?.createdAt) return 'N/A';
+                      try {
+                        const date = new Date(profile.createdAt);
+                        return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+                      } catch (error) {
+                        console.error('Date formatting error:', error);
+                        return 'N/A';
+                      }
+                    })()}
+                  </p>
+                </div>
+              </div>
+            )}
+          </Card>
+
+
+          {/* Security Settings */}
+          <Card className="p-6 mt-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <FaKey className="w-5 h-5 text-teal-600" />
+              Security Settings
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Password</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Update your password to keep your account secure</p>
+                </div>
+                <Button
+                  onClick={handleResetPassword}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <FaKey className="w-4 h-4" />
+                  Reset Password
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+        </div>
       </div>
     </div>
   );

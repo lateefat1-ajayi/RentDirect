@@ -47,8 +47,16 @@ export default function UserLayout() {
         className={`absolute z-40 md:static bg-white dark:bg-gray-900 w-64 h-full transition-transform duration-300
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 border-r dark:border-gray-700`}
       >
-        <UserSidebar />
+        <UserSidebar onClose={() => setSidebarOpen(false)} />
       </div>
+
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Main */}
       <div className="flex-1 flex flex-col">

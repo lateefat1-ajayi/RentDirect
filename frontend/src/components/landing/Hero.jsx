@@ -31,7 +31,6 @@ export default function Hero() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ 
               opacity: 1, 
-              y: 0,
               y: [0, -10, 0],
               scale: [1, 1.02, 1]
             }}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
+import TextArea from "./TextArea";
 import { FaStar, FaTimes } from "react-icons/fa";
 import { apiFetch } from "../../lib/api";
 import { toast } from "react-toastify";
@@ -132,13 +133,11 @@ export default function ReviewModal({ isOpen, onClose, targetUser, type, onSubmi
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Comment *
             </label>
-            <textarea
+            <TextArea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
               placeholder={`Share your experience with ${targetUser?.name}...`}
-              required
             />
           </div>
 

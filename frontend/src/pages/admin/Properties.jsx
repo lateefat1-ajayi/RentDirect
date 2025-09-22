@@ -49,8 +49,12 @@ export default function AdminProperties() {
   };
 
   const filteredProperties = properties.filter(property => {
+    const addressString = property.address ? 
+      `${property.address.street || ''} ${property.address.city || ''} ${property.address.state || ''}`.trim() : 
+      property.location || '';
+    
     const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         addressString.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          property.landlord.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === "all" || property.status === filterStatus;
     return matchesSearch && matchesFilter;
@@ -83,8 +87,6 @@ export default function AdminProperties() {
         return <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">Available</span>;
       case "rented":
         return <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">Rented</span>;
-      case "under_maintenance":
-        return <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">Under Maintenance</span>;
       default:
         return <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">Unknown</span>;
     }
@@ -141,7 +143,6 @@ export default function AdminProperties() {
               <option value="active">Active</option>
               <option value="available">Available</option>
               <option value="rented">Rented</option>
-              <option value="under_maintenance">Under Maintenance</option>
               <option value="rejected">Rejected</option>
               <option value="inactive">Inactive</option>
             </select>
@@ -181,7 +182,12 @@ export default function AdminProperties() {
                       </div>
                       <div>
                         <h4 className="font-medium text-gray-900 dark:text-white">{property.title}</h4>
-                        <p className="text-sm text-gray-500">{property.address}</p>
+                        <p className="text-sm text-gray-500">
+                          {property.address ? 
+                            `${property.address.street || ''} ${property.address.city || ''} ${property.address.state || ''}`.trim() || property.location :
+                            property.location
+                          }
+                        </p>
                         <p className="text-xs text-gray-400">
                           Listed: {new Date(property.createdAt).toLocaleDateString()}
                         </p>
@@ -254,7 +260,12 @@ export default function AdminProperties() {
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                   {selectedProperty.title}
                 </h2>
-                <p className="text-gray-500">{selectedProperty.address}</p>
+                <p className="text-gray-500">
+                  {selectedProperty.address ? 
+                    `${selectedProperty.address.street || ''} ${selectedProperty.address.city || ''} ${selectedProperty.address.state || ''}`.trim() || selectedProperty.location :
+                    selectedProperty.location
+                  }
+                </p>
                 <div className="flex items-center space-x-2 mt-2">
                   <FaUser className="w-3 h-3 text-gray-400" />
                   <span className="text-sm text-gray-500">{selectedProperty.landlord.name}</span>

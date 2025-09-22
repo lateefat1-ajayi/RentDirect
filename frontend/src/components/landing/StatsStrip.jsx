@@ -7,7 +7,7 @@ export default function StatsStrip() {
   ];
 
   return (
-    <section className="bg-primary text-white dark:bg-yellow-400 dark:text-black py-12">
+    <section className="bg-gradient-to-br from-teal-600 via-teal-500 to-teal-400 text-white py-12">
       <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
         {stats.map((stat, index) => (
           <div key={index}>

@@ -4,7 +4,37 @@ import Property from "../models/Property.js";
 
 export const createProperty = async (req, res) => {
   try {
-    const { title, description, price, location, bedrooms, bathrooms, size } = req.body;
+    const { 
+      title, 
+      description, 
+      price, 
+      location, 
+      bedrooms, 
+      bathrooms, 
+      size,
+      address: addressStr,
+      coordinates: coordinatesStr
+    } = req.body;
+
+    // Parse JSON strings for address and coordinates
+    let address = {};
+    let coordinates = {};
+    
+    try {
+      if (addressStr) {
+        address = typeof addressStr === 'string' ? JSON.parse(addressStr) : addressStr;
+      }
+    } catch (error) {
+      console.error("Error parsing address:", error);
+    }
+    
+    try {
+      if (coordinatesStr) {
+        coordinates = typeof coordinatesStr === 'string' ? JSON.parse(coordinatesStr) : coordinatesStr;
+      }
+    } catch (error) {
+      console.error("Error parsing coordinates:", error);
+    }
 
     console.log("Creating property - User details:", {
       userId: req.user._id,
@@ -23,12 +53,17 @@ export const createProperty = async (req, res) => {
       });
     }
 
+    // Check if at least 4 images are uploaded
+    if (!req.files || req.files.length < 4) {
+      return res.status(400).json({ 
+        message: "At least 4 property images are required. Please upload photos showing different rooms and angles." 
+      });
+    }
+
     let images = [];
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const result = await uploadToCloudinary(file.buffer, file.originalname);
-        images.push({ url: result.secure_url, public_id: result.public_id });
-      }
+    for (const file of req.files) {
+      const result = await uploadToCloudinary(file.buffer, file.originalname);
+      images.push({ url: result.secure_url, public_id: result.public_id });
     }
 
     const property = await Property.create({
@@ -41,6 +76,9 @@ export const createProperty = async (req, res) => {
       size,
       landlord: req.user._id,
       images,
+      address: address || {},
+      coordinates: coordinates || {},
+      status: "available" // Set status to available so users can see the property immediately
     });
 
     console.log("Property created successfully:", {
@@ -87,14 +125,13 @@ export const getProperties = async (req, res) => {
       query.location = { $regex: location, $options: "i" };
     }
 
-    // Price filter
-    if (!minPrice && !maxPrice) {
-      query.price = { $gte: 300000, $lte: 2000000 };
-    } else {
+    // Price filter - only apply if minPrice or maxPrice is specified
+    if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
+    // If no price filter is specified, don't add any price constraints
 
     const total = await Property.countDocuments(query);
 
@@ -134,10 +171,31 @@ export const getMyProperties = async (req, res) => {
     const properties = await Property.find({ landlord: req.user._id })
       .sort({ createdAt: -1 });
 
-    console.log("Properties found:", properties.length);
-    console.log("Sample property:", properties[0]);
+    // Get application counts for each property
+    const Application = (await import("../models/Application.js")).default;
+    const Payment = (await import("../models/Payment.js")).default;
+    
+    const propertiesWithCounts = await Promise.all(
+      properties.map(async (property) => {
+        const [applicationCount, paymentCount] = await Promise.all([
+          Application.countDocuments({ property: property._id }),
+          Payment.countDocuments({ property: property._id })
+        ]);
+        
+        return {
+          ...property.toObject(),
+          applicationCount,
+          paymentCount,
+          hasApplications: applicationCount > 0,
+          hasPayments: paymentCount > 0
+        };
+      })
+    );
 
-    res.json(properties);
+    console.log("Properties found:", propertiesWithCounts.length);
+    console.log("Sample property:", propertiesWithCounts[0]);
+
+    res.json(propertiesWithCounts);
   } catch (error) {
     console.error("Error fetching landlord properties:", error);
     res.status(500).json({ message: "Server error" });

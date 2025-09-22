@@ -52,6 +52,12 @@ export const sendMessageSocket = (data) => {
   }
 };
 
+export const emitTyping = (roomId, isTyping) => {
+  if (socket.connected && roomId) {
+    socket.emit("typing", { roomId, isTyping: !!isTyping });
+  }
+};
+
 export const updateSocketToken = (newToken) => {
   if (socket.connected) {
     socket.disconnect();

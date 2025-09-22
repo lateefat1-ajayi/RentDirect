@@ -2,14 +2,18 @@ import { useState, useEffect, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import Modal from "../../components/ui/Modal";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+import TextArea from "../../components/ui/TextArea";
 import { apiFetch, apiUpload } from "../../lib/api";
 import { toast } from "react-toastify";
+import { FaMapMarkerAlt, FaLocationArrow, FaSearch } from "react-icons/fa";
 
 export default function LandlordListings() {
   const { profile } = useOutletContext();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [activeTab, setActiveTab] = useState("listings"); // "listings" or "add"
   const [newProperty, setNewProperty] = useState({
     title: "",
     location: "",
@@ -18,12 +22,28 @@ export default function LandlordListings() {
     bedrooms: 0,
     bathrooms: 0,
     size: "",
+    address: {
+      street: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "Nigeria"
+    },
+    coordinates: {
+      latitude: null,
+      longitude: null
+    }
   });
   const [imageFiles, setImageFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+  const [viewingProperty, setViewingProperty] = useState(null);
+  const [imageLoading, setImageLoading] = useState(false);
 
   const fetchListings = useCallback(async () => {
     try {
@@ -44,7 +64,6 @@ export default function LandlordListings() {
     
     if (statusLower === 'available') return 'available';
     if (statusLower === 'rented') return 'rented';
-    if (statusLower === 'under_maintenance') return 'pending';
     
     return 'available'; // Default to available
   };
@@ -63,10 +82,193 @@ export default function LandlordListings() {
     setNewProperty({ ...newProperty, [e.target.name]: e.target.value });
   };
 
+  const handleAddressChange = (e) => {
+    const { name, value } = e.target;
+    setNewProperty({
+      ...newProperty,
+      address: {
+        ...newProperty.address,
+        [name]: value
+      }
+    });
+  };
+
+  // Get coordinates for the entered property address
+  const getPropertyCoordinates = async () => {
+    if (!newProperty.location.trim()) {
+      setLocationError("Please enter the property address first");
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError("");
+
+    try {
+      // Use forward geocoding to get coordinates from address
+      const response = await fetch(
+        `https://api.bigdatacloud.net/data/forward-geocode-client?query=${encodeURIComponent(newProperty.location)}&localityLanguage=en`
+      );
+      const data = await response.json();
+      
+      if (data.results && data.results.length > 0) {
+        const result = data.results[0];
+        const { latitude, longitude } = result;
+        
+        // Update coordinates and detailed address
+        setNewProperty({
+          ...newProperty,
+          address: {
+            street: result.streetNumber && result.streetName ? `${result.streetNumber} ${result.streetName}` : result.streetName || "",
+            city: result.city || "",
+            state: result.principalSubdivision || "",
+            postalCode: result.postcode || "",
+            country: result.countryName || "Nigeria"
+          },
+          coordinates: {
+            latitude,
+            longitude
+          }
+        });
+        
+        setShowAddressForm(true);
+        toast.success("Coordinates found for the property address!");
+      } else {
+        setLocationError("Could not find coordinates for this address. You can still save the property without coordinates.");
+      }
+    } catch (error) {
+      console.error("Error getting coordinates:", error);
+      setLocationError("Could not get coordinates for this address. You can still save the property without coordinates.");
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  // Alternative: Get user's current location (for when they are at the property)
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by this browser");
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          
+          // Use reverse geocoding to get address details
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          const data = await response.json();
+          
+          // Update location with detailed address
+          const fullAddress = [
+            data.streetNumber && data.streetName ? `${data.streetNumber} ${data.streetName}` : data.streetName,
+            data.city,
+            data.principalSubdivision,
+            data.postcode
+          ].filter(Boolean).join(", ");
+
+          setNewProperty({
+            ...newProperty,
+            location: fullAddress,
+            address: {
+              street: data.streetNumber && data.streetName ? `${data.streetNumber} ${data.streetName}` : data.streetName || "",
+              city: data.city || "",
+              state: data.principalSubdivision || "",
+              postalCode: data.postcode || "",
+              country: data.countryName || "Nigeria"
+            },
+            coordinates: {
+              latitude,
+              longitude
+            }
+          });
+          
+          setShowAddressForm(true);
+          toast.success("Location detected! Please verify this is the correct property address.");
+        } catch (error) {
+          console.error("Error getting location details:", error);
+          setLocationError("Could not get detailed address. Please enter manually.");
+        } finally {
+          setLocationLoading(false);
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        setLocationError("Unable to get your location. Please allow location access or enter manually.");
+        setLocationLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // 5 minutes
+      }
+    );
+  };
+
   const handleImagesChange = (e) => {
     const files = Array.from(e.target.files || []);
-    setImageFiles(files.slice(0, 5));
+    console.log("Files selected:", files.length);
+    setImageFiles(files.slice(0, 8));
   };
+
+  const openImageViewer = (property, imageIndex = 0) => {
+    setViewingProperty(property);
+    setSelectedImageIndex(imageIndex);
+    setImageLoading(true);
+  };
+
+  const closeImageViewer = () => {
+    setViewingProperty(null);
+    setSelectedImageIndex(null);
+    setImageLoading(false);
+  };
+
+  const nextImage = () => {
+    if (viewingProperty && viewingProperty.images) {
+      setImageLoading(true);
+      setSelectedImageIndex((prev) => 
+        prev < viewingProperty.images.length - 1 ? prev + 1 : 0
+      );
+    }
+  };
+
+  const prevImage = () => {
+    if (viewingProperty && viewingProperty.images) {
+      setImageLoading(true);
+      setSelectedImageIndex((prev) => 
+        prev > 0 ? prev - 1 : viewingProperty.images.length - 1
+      );
+    }
+  };
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!viewingProperty) return;
+      
+      switch (e.key) {
+        case 'Escape':
+          closeImageViewer();
+          break;
+        case 'ArrowLeft':
+          prevImage();
+          break;
+        case 'ArrowRight':
+          nextImage();
+          break;
+      }
+    };
+
+    if (viewingProperty) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [viewingProperty, selectedImageIndex]);
 
   const submitProperty = async () => {
     try {
@@ -78,16 +280,51 @@ export default function LandlordListings() {
         return;
       }
       
+      // Check if at least 4 images are uploaded
+      if (imageFiles.length < 4) {
+        toast.error("Please upload at least 4 images of the property (different rooms/angles)");
+        return;
+      }
+      
       setSubmitting(true);
       const formData = new FormData();
-      Object.entries(newProperty).forEach(([key, value]) => {
-        formData.append(key, value);
-      });
+      
+      // Add basic property fields
+      formData.append("title", newProperty.title);
+      formData.append("description", newProperty.description);
+      formData.append("price", newProperty.price);
+      formData.append("location", newProperty.location);
+      formData.append("bedrooms", newProperty.bedrooms);
+      formData.append("bathrooms", newProperty.bathrooms);
+      if (newProperty.size) formData.append("size", newProperty.size);
+      
+      // Add address and coordinates as JSON strings
+      if (newProperty.address) {
+        formData.append("address", JSON.stringify(newProperty.address));
+      }
+      if (newProperty.coordinates) {
+        formData.append("coordinates", JSON.stringify(newProperty.coordinates));
+      }
+      
+      // Add images
       imageFiles.forEach((file) => formData.append("images", file));
 
-      await apiUpload("/property", formData, { method: "POST" });
+      console.log("Submitting property with data:", {
+        title: newProperty.title,
+        location: newProperty.location,
+        price: newProperty.price,
+        bedrooms: newProperty.bedrooms,
+        bathrooms: newProperty.bathrooms,
+        imageCount: imageFiles.length
+      });
+
+      const response = await apiUpload("/property", formData, { method: "POST" });
+      console.log("Property creation response:", response);
+      
       await fetchListings();
-      setShowForm(false);
+      setActiveTab("listings"); // Switch back to listings tab
+      
+      // Reset form
       setNewProperty({
         title: "",
         location: "",
@@ -96,11 +333,26 @@ export default function LandlordListings() {
         bedrooms: 0,
         bathrooms: 0,
         size: "",
+        address: {
+          street: "",
+          city: "",
+          state: "",
+          postalCode: "",
+          country: "Nigeria"
+        },
+        coordinates: {
+          latitude: null,
+          longitude: null
+        }
       });
       setImageFiles([]);
+      setLocationError("");
+      setShowAddressForm(false);
+      
       toast.success("Property added successfully!");
     } catch (err) {
-      toast.error("Failed to add property: " + err.message);
+      console.error("Property creation error:", err);
+      toast.error("Failed to add property: " + (err.message || "Unknown error"));
     } finally {
       setSubmitting(false);
     }
@@ -173,137 +425,340 @@ export default function LandlordListings() {
         </Card>
       )}
 
-      {/* Add Property Form */}
+      {/* Main Content */}
       <section>
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">My Listings</h1>
-          {profile?.verificationStatus === "approved" ? (
-            <button
-              className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition-colors"
-              onClick={() => setShowForm(!showForm)}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Property Management</h1>
+          {activeTab === "listings" && (
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
-              {showForm ? "Cancel" : "Add Property"}
-            </button>
-          ) : (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {profile?.verificationStatus === "pending" 
-                  ? "Verification pending..." 
-                  : "Verification required to list properties"
-                }
-              </span>
-              <button
-                className="px-4 py-2 bg-gray-400 text-white rounded cursor-not-allowed opacity-50"
-                disabled
-                title={profile?.verificationStatus === "pending" 
-                  ? "Your verification is being reviewed" 
-                  : "You need to verify your account first"
-                }
-              >
-                Add Property
-              </button>
-            </div>
+              <option value="all">All Properties</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
           )}
         </div>
 
-        {showForm && (
-          <Card className="p-4 space-y-4">
-            <input
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab("listings")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "listings"
+                  ? "border-teal-500 text-teal-600 dark:text-teal-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
+              }`}
+            >
+              My Properties ({listings.length})
+            </button>
+            <button
+              onClick={() => {
+                if (profile?.verificationStatus === "approved") {
+                  setActiveTab("add");
+                } else {
+                  toast.error(profile?.verificationStatus === "pending" 
+                    ? "Your verification is being reviewed. Please wait for approval." 
+                    : "You need to verify your account before adding properties.");
+                }
+              }}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "add"
+                  ? "border-teal-500 text-teal-600 dark:text-teal-400"
+                  : profile?.verificationStatus === "approved"
+                    ? "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
+                    : "border-transparent text-gray-400 cursor-not-allowed"
+              }`}
+              disabled={profile?.verificationStatus !== "approved"}
+            >
+              Add New Property
+              {profile?.verificationStatus !== "approved" && (
+                <span className="ml-1 text-xs">🔒</span>
+              )}
+            </button>
+          </nav>
+        </div>
+
+        {/* Add Property Form */}
+        {activeTab === "add" && (
+          profile?.verificationStatus === "approved" ? (
+          <Card className="p-3 space-y-3">
+            <Input
               type="text"
               name="title"
               placeholder="Title"
               value={newProperty.title}
               onChange={handleInputChange}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <input
+            {/* Location Input Section */}
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Property Location *
+                </label>
+            <Input
               type="text"
               name="location"
-              placeholder="Location"
+                  placeholder="Enter the property's address (e.g., 123 Main St, Lagos, Nigeria)"
               value={newProperty.location}
               onChange={handleInputChange}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
+                  className="w-full"
+                />
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  💡 Enter the actual address where the property is located, not your current location
+                </div>
+              </div>
+              
+              {/* Location Options */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={getPropertyCoordinates}
+                    disabled={locationLoading || !newProperty.location.trim()}
+                    variant="secondary"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    {locationLoading ? (
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+                    ) : (
+                      <FaMapMarkerAlt className="w-4 h-4" />
+                    )}
+                    Get Coordinates for Address
+                  </Button>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    (Recommended - gets precise location for the entered address)
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={getCurrentLocation}
+                    disabled={locationLoading}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <FaLocationArrow className="w-4 h-4" />
+                    I'm at the Property Now
+                  </Button>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    (Only if you're physically at the property location)
+                  </span>
+                </div>
+              </div>
+              
+              {locationError && (
+                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                  {locationError}
+                </div>
+              )}
+              
+              {newProperty.coordinates.latitude && (
+                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                  <FaMapMarkerAlt className="w-4 h-4" />
+                  <span>✅ Coordinates found: {newProperty.coordinates.latitude.toFixed(4)}, {newProperty.coordinates.longitude.toFixed(4)}</span>
+                </div>
+              )}
+              
+              {/* Toggle for detailed address form */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddressForm(!showAddressForm)}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {showAddressForm ? "Hide" : "Add"} Detailed Address
+                </button>
+                {showAddressForm && (
+                  <span className="text-xs text-gray-500">(Optional - helps with precise location)</span>
+                )}
+              </div>
+              
+              {/* Detailed Address Form */}
+              {showAddressForm && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <Input
+                    type="text"
+                    name="street"
+                    placeholder="Street Address"
+                    value={newProperty.address.street}
+                    onChange={handleAddressChange}
+                  />
+                  <Input
+                    type="text"
+                    name="city"
+                    placeholder="City"
+                    value={newProperty.address.city}
+                    onChange={handleAddressChange}
+                  />
+                  <Input
+                    type="text"
+                    name="state"
+                    placeholder="State/Province"
+                    value={newProperty.address.state}
+                    onChange={handleAddressChange}
+                  />
+                  <Input
+                    type="text"
+                    name="postalCode"
+                    placeholder="Postal Code"
+                    value={newProperty.address.postalCode}
+                    onChange={handleAddressChange}
+                  />
+                </div>
+              )}
+            </div>
+            <Input
               type="number"
               name="price"
               placeholder="Price"
               value={newProperty.price}
               onChange={handleInputChange}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <textarea
+            <TextArea
               name="description"
               placeholder="Description"
               value={newProperty.description}
               onChange={handleInputChange}
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <div className="space-y-3">
             <div className="flex gap-2">
-              <input
+              <Input
                 type="number"
                 name="bedrooms"
                 placeholder="Bedrooms"
                 value={newProperty.bedrooms}
                 onChange={handleInputChange}
-                className="w-1/3 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-1/2"
               />
-              <input
+              <Input
                 type="number"
                 name="bathrooms"
                 placeholder="Bathrooms"
                 value={newProperty.bathrooms}
                 onChange={handleInputChange}
-                className="w-1/3 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-1/2"
               />
-              <input
+              </div>
+              
+              {/* Optional Size Field */}
+              <div className="space-y-1">
+              <Input
                 type="number"
                 name="size"
-                placeholder="Size (sq ft)"
+                  placeholder="Size (sq ft) - Optional"
                 value={newProperty.size}
                 onChange={handleInputChange}
-                className="w-1/3 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full"
               />
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  💡 Helpful for tenants to understand the space, but not required
+                </div>
+              </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Images (up to 5)</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Property Images * <span className="text-red-500">(Required)</span>
+              </label>
               <input
                 type="file"
                 accept="image/*"
                 multiple
                 onChange={handleImagesChange}
-                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300"
+                required
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 dark:file:bg-gray-700 dark:file:text-gray-300"
               />
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                📸 Upload at least 4 images (up to 8) - Show different rooms and angles
+              </div>
+              
+              {imageFiles.length < 4 && (
+                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                  ⚠️ At least 4 images are required to list the property ({imageFiles.length}/4 uploaded)
+                </div>
+              )}
+              
               {imageFiles.length > 0 && (
-                <div className="flex gap-2 flex-wrap">
-                  {imageFiles.map((f, i) => (
-                    <div key={i} className="w-24 h-16 border rounded overflow-hidden relative">
-                      <img
-                        src={URL.createObjectURL(f)}
-                        alt={`Preview ${i + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setImageFiles(prev => prev.filter((_, index) => index !== i))}
-                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Image Previews ({imageFiles.length}):</p>
+                  <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                    {imageFiles.map((f, i) => {
+                      console.log("Rendering image preview:", i, f.name);
+                      return (
+                        <div key={i} className="relative group">
+                          <div className="w-full h-16 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                            <img
+                              src={URL.createObjectURL(f)}
+                              alt={`Preview ${i + 1}`}
+                              className="w-full h-full object-cover"
+                              onLoad={() => console.log("Image loaded:", f.name)}
+                              onError={() => console.log("Image error:", f.name)}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setImageFiles(prev => prev.filter((_, index) => index !== i))}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 transition-colors shadow-lg"
+                            title="Remove image"
+                          >
+                            ×
+                          </button>
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                              Click × to remove
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
-            <button className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50" onClick={submitProperty} disabled={submitting}>
-              {submitting ? "Submitting..." : "Submit Property"}
-            </button>
+            <Button 
+              variant="primary" 
+              size="md" 
+              onClick={submitProperty} 
+              disabled={submitting || imageFiles.length < 4}
+              isLoading={submitting}
+            >
+              {submitting ? "Submitting..." : imageFiles.length < 4 ? `Upload ${4 - imageFiles.length} More Images` : "Submit Property"}
+            </Button>
           </Card>
+          ) : (
+            <Card className="p-8 text-center">
+              <div className="text-6xl mb-4">🔒</div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                Verification Required
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                {profile?.verificationStatus === "pending" 
+                  ? "Your verification request is being reviewed. You'll be able to add properties once approved."
+                  : "You need to verify your account before you can add properties."
+                }
+              </p>
+              {profile?.verificationStatus !== "pending" && (
+                <a 
+                  href="/landlord/verification" 
+                  className="inline-block px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Go to Verification
+                </a>
+              )}
+            </Card>
+          )
         )}
       </section>
 
-      {/* Listings Grid */}
-      <section>
+        {/* Listings Tab */}
+        {activeTab === "listings" && (
+          <section>
         {loading ? (
           <div className="p-6">
             <div className="animate-pulse space-y-4">
@@ -322,20 +777,19 @@ export default function LandlordListings() {
             {/* Status Filter */}
             <div className="mb-4 flex flex-wrap gap-2">
               <span className="text-sm font-medium text-gray-700">Filter by status:</span>
-              {['all', 'available', 'rented', 'pending'].map((status) => (
+              {['all', 'available', 'rented'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
                   className={`px-3 py-1 text-xs font-medium rounded-full ${
                     statusFilter === status
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-teal-500 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   {status === 'all' ? 'All' :
                    status === 'available' ? 'Available' :
                    status === 'rented' ? 'Rented' :
-                   status === 'pending' ? 'Under Maintenance' :
                    'All'}
                   {status === 'all' ? ` (${listings.length})` : 
                    ` (${listings.filter(p => getStatusCategory(p.status) === status).length})`}
@@ -344,62 +798,76 @@ export default function LandlordListings() {
             </div>
             
             
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredListings.map((property) => (
-              <Card key={property._id} className="p-4">
+              <Card key={property._id} className="p-4 flex flex-col">
+                {/* Property Images */}
+                <div className="relative">
+                <img
+                  src={
+                    Array.isArray(property.images) && property.images.length > 0
+                      ? (typeof property.images[0] === "string" ? property.images[0] : property.images[0]?.url)
+                      : "https://via.placeholder.com/600x400?text=Property"
+                  }
+                  alt={property.title}
+                    className="w-full h-40 object-cover rounded-md mb-3 cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => openImageViewer(property, 0)}
+                  />
+                  
+                  {/* Image count indicator */}
+                  {property.images && property.images.length > 1 && (
+                    <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+                      {property.images.length} photos
+                    </div>
+                  )}
+                </div>
+                
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-bold text-lg">{property.title}</h3>
                   {/* Property Status Badge */}
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  <span                   className={`px-2 py-1 text-xs font-medium rounded-full ${
                     getStatusCategory(property.status) === 'available' ? 'bg-green-100 text-green-800' :
                     getStatusCategory(property.status) === 'rented' ? 'bg-blue-100 text-blue-800' :
-                    getStatusCategory(property.status) === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
                     {getStatusCategory(property.status) === 'available' ? 'Available' :
                      getStatusCategory(property.status) === 'rented' ? 'Rented' :
-                     getStatusCategory(property.status) === 'pending' ? 'Under Maintenance' :
                      property.status || 'Available'}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">{property.location}</p>
                 <p className="font-semibold mt-2">₦{property.price}/year</p>
-                <p className="text-sm mt-1">{property.bedrooms} bed / {property.bathrooms} bath</p>
+                <p className="text-sm mt-1">
+                  {property.bedrooms} bed / {property.bathrooms} bath
+                  {property.size && ` • ${property.size} sq ft`}
+                </p>
+                
+                {/* Application/Payment Info */}
+                {(property.hasApplications || property.hasPayments) && (
+                  <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-800 dark:text-yellow-200">
+                    {property.hasApplications && `Applications: ${property.applicationCount}`}
+                    {property.hasApplications && property.hasPayments && " • "}
+                    {property.hasPayments && `Payments: ${property.paymentCount}`}
+                  </div>
+                )}
+                
                 <div className="flex gap-2 mt-3">
-                  <button className="px-3 py-1 bg-blue-500 text-white rounded" onClick={() => setEditing(property)}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setEditing(property)}
+                  >
                     Edit
-                  </button>
-                  <button className="px-3 py-1 bg-red-500 text-white rounded" onClick={() => setDeleteTarget(property)}>
-                    Delete
-                  </button>
+                  </Button>
                 </div>
               </Card>
             ))}
             </div>
           </>
         )}
-      </section>
+          </section>
+        )}
 
-      <Modal
-        open={!!deleteTarget}
-        title="Delete property?"
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={async () => {
-          if (!deleteTarget) return;
-          try {
-            await apiFetch(`/property/${deleteTarget._id}`, { method: "DELETE" });
-            await fetchListings();
-            toast.success("Property deleted");
-          } catch (err) {
-            toast.error("Delete failed: " + (err.message || ""));
-          } finally {
-            setDeleteTarget(null);
-          }
-        }}
-        confirmText="Delete"
-      >
-        <p className="text-sm text-gray-600">This action cannot be undone.</p>
-      </Modal>
 
       {editing && (
         <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center">
@@ -411,12 +879,17 @@ export default function LandlordListings() {
               value={editing.title} 
               onChange={(e) => setEditing({ ...editing, title: e.target.value })} 
             />
+            <div className="space-y-2">
             <input 
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-              placeholder="Location"
+                placeholder="Property Location"
               value={editing.location} 
               onChange={(e) => setEditing({ ...editing, location: e.target.value })} 
             />
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                💡 Tip: Use "Use My Location" when creating new properties for precise coordinates
+              </div>
+            </div>
             <input 
               type="number" 
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
@@ -430,44 +903,121 @@ export default function LandlordListings() {
               value={editing.description} 
               onChange={(e) => setEditing({ ...editing, description: e.target.value })} 
             />
+            <div className="space-y-3">
             <div className="flex gap-2">
-              <input 
+              <Input 
                 type="number" 
-                className="w-1/3 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  className="w-1/2" 
                 placeholder="Bedrooms"
                 value={editing.bedrooms} 
                 onChange={(e) => setEditing({ ...editing, bedrooms: e.target.value })} 
               />
-              <input 
+              <Input 
                 type="number" 
-                className="w-1/3 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  className="w-1/2" 
                 placeholder="Bathrooms"
                 value={editing.bathrooms} 
                 onChange={(e) => setEditing({ ...editing, bathrooms: e.target.value })} 
               />
-              <input 
+              </div>
+              <Input 
                 type="number" 
-                className="w-1/3 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                placeholder="Size (sq ft)"
+                className="w-full" 
+                placeholder="Size (sq ft) - Optional"
                 value={editing.size} 
                 onChange={(e) => setEditing({ ...editing, size: e.target.value })} 
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button 
-                className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" 
+              <Button 
+                variant="secondary" 
+                size="sm" 
                 onClick={() => setEditing(null)}
               >
                 Cancel
-              </button>
-              <button 
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors" 
+              </Button>
+              <Button 
+                variant="primary" 
+                size="sm" 
                 onClick={submitEdit}
               >
                 Save
-              </button>
+              </Button>
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* Image Viewer Modal */}
+      {/* Custom Image Viewer Modal */}
+      {viewingProperty && selectedImageIndex !== null && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="relative w-[90vw] h-[90vh] max-w-6xl max-h-[80vh] bg-black rounded-lg overflow-hidden shadow-2xl">
+            {/* Close Button */}
+            <button
+              onClick={closeImageViewer}
+              className="absolute top-4 right-4 z-50 text-white hover:text-gray-300 bg-black/50 rounded-full w-10 h-10 flex items-center justify-center text-xl font-bold transition-colors"
+              title="Close"
+            >
+              ×
+            </button>
+
+            {/* Loading Spinner */}
+            {imageLoading && (
+              <div className="absolute inset-0 flex items-center justify-center z-40">
+                <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+            
+            {/* Image Container */}
+            <div className="w-full h-full flex items-center justify-center p-4">
+              <img
+                src={
+                  viewingProperty && typeof viewingProperty.images[selectedImageIndex] === "string" 
+                    ? viewingProperty.images[selectedImageIndex] 
+                    : viewingProperty?.images[selectedImageIndex]?.url
+                }
+                alt={`${viewingProperty?.title} - Image ${selectedImageIndex + 1}`}
+                className={`max-w-full max-h-full w-auto h-auto object-contain transition-opacity duration-300 ${
+                  imageLoading ? 'opacity-0' : 'opacity-100'
+                }`}
+                onLoad={() => setImageLoading(false)}
+                onError={() => setImageLoading(false)}
+              />
+            </div>
+            
+            {/* Navigation arrows */}
+            {viewingProperty && viewingProperty.images.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-2xl hover:text-gray-300 bg-black/50 rounded-full w-10 h-10 flex items-center justify-center"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-2xl hover:text-gray-300 bg-black/50 rounded-full w-10 h-10 flex items-center justify-center"
+                >
+                  ›
+                </button>
+              </>
+            )}
+
+            {/* Image counter */}
+            {viewingProperty && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+                {selectedImageIndex + 1} of {viewingProperty.images.length}
+              </div>
+            )}
+
+            {/* Property title */}
+            {viewingProperty && (
+              <div className="absolute top-4 left-4 text-white text-lg font-semibold bg-black/50 px-3 py-1 rounded">
+                {viewingProperty.title}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

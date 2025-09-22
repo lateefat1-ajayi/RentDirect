@@ -94,22 +94,22 @@ export default function Register() {
   ];
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-screen flex overflow-hidden">
       {/* Left Side - Visual Panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-teal-600 via-teal-500 to-teal-400 relative overflow-hidden">
         <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative z-10 flex flex-col justify-center items-center text-white p-12">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-4">Join RentDirect</h1>
-            <p className="text-xl text-white/90">Start your rental journey today</p>
+        <div className="relative z-10 flex flex-col justify-center items-center text-white p-6">
+          <div className="text-center mb-4">
+            <h1 className="text-2xl font-bold mb-2">Join RentDirect</h1>
+            <p className="text-sm text-white/90">Start your rental journey today</p>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2">
             {benefits.map((benefit, index) => (
-              <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-                <div className="text-white/90 mb-2 flex justify-center">{benefit.icon}</div>
-                <h3 className="font-semibold text-sm mb-1">{benefit.title}</h3>
-                <p className="text-xs text-white/80">{benefit.description}</p>
+              <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-2 text-center">
+                <div className="text-white/90 mb-1 flex justify-center text-sm">{benefit.icon}</div>
+                <h3 className="font-semibold text-xs mb-1">{benefit.title}</h3>
+                <p className="text-xs text-white/80 leading-tight">{benefit.description}</p>
               </div>
             ))}
           </div>
@@ -117,23 +117,23 @@ export default function Register() {
       </div>
 
       {/* Right Side - Register Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-8">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create Account</h2>
-            <p className="text-gray-600 dark:text-gray-400">Join thousands of users on RentDirect</p>
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Create Account</h2>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Join thousands of users on RentDirect</p>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg max-h-[60vh] overflow-y-auto">
-            <div className="text-sm mb-6 text-teal-600 dark:text-teal-400">
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+            <div className="text-xs mb-3 text-teal-600 dark:text-teal-400">
               <Link to="/" className="hover:underline">← Back to Home</Link>
             </div>
 
-            <div className="flex justify-center gap-4 mb-6">
+            <div className="flex justify-center gap-2 mb-3">
               <button
                 type="button"
                 onClick={() => setRole("tenant")}
-                className={`px-6 py-3 rounded-full text-sm font-medium border transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                   role === "tenant"
                     ? "bg-teal-600 text-white border-teal-600"
                     : "bg-gray-200 dark:bg-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600"
@@ -144,7 +144,7 @@ export default function Register() {
               <button
                 type="button"
                 onClick={() => setRole("landlord")}
-                className={`px-6 py-3 rounded-full text-sm font-medium border transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                   role === "landlord"
                     ? "bg-teal-600 text-white border-teal-600"
                     : "bg-gray-200 dark:bg-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600"
@@ -154,13 +154,13 @@ export default function Register() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-2">
               <Input label="Full Name" name="name" value={form.name} onChange={handleChange} required />
               <Input label="Email" name="email" value={form.email} onChange={handleChange} type="email" required />
               <Input label="Phone Number" name="phone" value={form.phone} onChange={handleChange} type="tel" placeholder="+2348012345678" />
               <PasswordInput label="Password" name="password" value={form.password} onChange={handleChange} required />
               {form.password && (
-                <div className={`text-sm ${passwordStrength.color}`}>
+                <div className={`text-xs ${passwordStrength.color}`}>
                   {passwordStrength.text}
                 </div>
               )}
@@ -170,7 +170,7 @@ export default function Register() {
                 {loading ? "Creating Account..." : `Create ${role.charAt(0).toUpperCase() + role.slice(1)} Account`}
               </Button>
 
-              <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-center text-gray-600 dark:text-gray-400">
                 Already have an account?{" "}
                 <Link to="/auth/login" className="text-teal-600 dark:text-teal-400 font-medium hover:underline">
                   Sign in here

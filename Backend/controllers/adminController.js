@@ -116,16 +116,116 @@ const getAllUsers = async (req, res) => {
 // Get user details
 const getUserDetails = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id)
-      .populate("properties", "title price status")
-      .populate("applications", "status createdAt")
-      .populate("reviews", "rating comment");
+    console.log("getUserDetails called for user ID:", req.params.id);
+    const user = await User.findById(req.params.id);
 
     if (!user) {
+      console.log("User not found for ID:", req.params.id);
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(user);
+    console.log("User found:", { id: user._id, name: user.name, role: user.role, verificationStatus: user.verificationStatus });
+
+    // Get properties for landlords
+    let properties = [];
+    if (user.role === "landlord") {
+      properties = await Property.find({ landlord: req.params.id })
+        .select("title price status createdAt")
+        .sort({ createdAt: -1 });
+    }
+
+    // Get applications for tenants
+    let applications = [];
+    if (user.role === "tenant") {
+      applications = await Application.find({ tenant: req.params.id })
+        .populate("property", "title")
+        .select("status createdAt")
+        .sort({ createdAt: -1 });
+    }
+
+    // Get reviews received by this user
+    const Review = (await import("../models/Review.js")).default;
+    const receivedReviews = await Review.find({ reviewedUser: req.params.id })
+      .populate("reviewer", "name email profileImage")
+      .populate("property", "title location")
+      .sort({ createdAt: -1 });
+
+    // Get reviews given by this user
+    const givenReviews = await Review.find({ reviewer: req.params.id })
+      .populate("reviewedUser", "name email profileImage")
+      .populate("property", "title location")
+      .sort({ createdAt: -1 });
+
+    // Get recent activity (applications, properties, etc.)
+    const recentActivity = [];
+    
+    // Add property listings activity
+    if (user.role === "landlord" && properties.length > 0) {
+      properties.forEach(property => {
+        recentActivity.push({
+          type: "property_listed",
+          description: `Listed property: ${property.title}`,
+          timestamp: property.createdAt,
+          data: { propertyId: property._id, propertyTitle: property.title }
+        });
+      });
+    }
+
+    // Add applications activity
+    if (user.role === "tenant" && applications.length > 0) {
+      applications.forEach(application => {
+        recentActivity.push({
+          type: "application_submitted",
+          description: `Applied to property`,
+          timestamp: application.createdAt,
+          data: { applicationId: application._id, status: application.status }
+        });
+      });
+    }
+
+    // Add reviews activity
+    givenReviews.forEach(review => {
+      recentActivity.push({
+        type: "review_given",
+        description: `Left a ${review.rating}-star review`,
+        timestamp: review.createdAt,
+        data: { reviewId: review._id, rating: review.rating }
+      });
+    });
+
+    // Sort activity by timestamp
+    recentActivity.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Calculate average rating from received reviews
+    const averageRating = receivedReviews.length > 0 
+      ? receivedReviews.reduce((sum, review) => sum + review.rating, 0) / receivedReviews.length 
+      : 0;
+
+    const userDetails = {
+      ...user.toObject(),
+      properties,
+      applications,
+      receivedReviews,
+      givenReviews,
+      recentActivity: recentActivity.slice(0, 10), // Last 10 activities
+      averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+      totalReviewsReceived: receivedReviews.length,
+      totalReviewsGiven: givenReviews.length
+    };
+
+    console.log("Returning user details:", {
+      id: userDetails._id,
+      name: userDetails.name,
+      role: userDetails.role,
+      verificationStatus: userDetails.verificationStatus,
+      propertiesCount: userDetails.properties.length,
+      applicationsCount: userDetails.applications.length,
+      reviewsReceived: userDetails.receivedReviews.length,
+      reviewsGiven: userDetails.givenReviews.length,
+      recentActivityCount: userDetails.recentActivity.length
+    });
+
+    res.json(userDetails);
   } catch (error) {
     console.error("Error fetching user details:", error);
     res.status(500).json({ message: "Failed to fetch user details" });
@@ -449,7 +549,20 @@ const getAllPayments = async (req, res) => {
       .populate("property", "title")
       .sort({ createdAt: -1 });
 
-    res.json(payments);
+    // Add platform fee information to each payment
+    const paymentsWithFees = await Promise.all(
+      payments.map(async (payment) => {
+        const paymentObj = payment.toObject();
+        
+        // Calculate platform fee (5% of payment amount)
+        const platformFee = Math.round(payment.amount * 0.05);
+        paymentObj.platformFee = platformFee;
+        
+        return paymentObj;
+      })
+    );
+
+    res.json(paymentsWithFees);
   } catch (error) {
     console.error("Error fetching payments:", error);
     res.status(500).json({ message: "Failed to fetch payments" });

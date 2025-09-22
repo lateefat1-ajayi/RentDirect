@@ -3,6 +3,7 @@ import Lease from "../models/Lease.js";
 import Revenue from "../models/Revenue.js";
 import paystack from "../config/paystack.js";
 import { createNotification } from "./notificationController.js"; 
+import PDFDocument from "pdfkit";
 
 export const initiatePayment = async (req, res) => {
   try {
@@ -249,5 +250,61 @@ export const refundPayment = async (req, res) => {
     res.json(response.data);
   } catch (err) {
     res.status(500).json({ message: err.response?.data || err.message });
+  }
+};
+
+// Generate a payment receipt PDF for a successful payment
+export const getPaymentReceipt = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const payment = await Payment.findById(paymentId)
+      .populate("tenant", "name email")
+      .populate("landlord", "name email")
+      .populate("property", "title location");
+
+    if (!payment) return res.status(404).json({ message: "Payment not found" });
+    if (payment.status !== "success") return res.status(400).json({ message: "Receipt available only for successful payments" });
+
+    // Authorization: tenant, landlord, or admin
+    const isTenant = req.user._id.toString() === payment.tenant._id.toString();
+    const isLandlord = req.user._id.toString() === payment.landlord._id.toString();
+    const isAdmin = req.user.role === "admin";
+    if (!(isTenant || isLandlord || isAdmin)) {
+      return res.status(403).json({ message: "Not permitted" });
+    }
+
+    const amountNaira = (payment.amount || 0) / 100;
+
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=receipt-${payment.reference}.pdf`);
+    doc.pipe(res);
+
+    // Header / branding
+    doc.fontSize(18).text("Payment Receipt", { align: "center" });
+    doc.moveDown();
+
+    // Core details
+    doc.fontSize(12).text(`Reference: ${payment.reference}`);
+    doc.text(`Date: ${new Date(payment.createdAt).toLocaleString()}`);
+    doc.text(`Amount: ₦${amountNaira.toLocaleString()}`);
+    doc.text(`Method: ${payment.paymentMethod || "Paystack"}`);
+    doc.moveDown();
+
+    // Parties and property
+    doc.text(`Tenant: ${payment.tenant?.name || ""} <${payment.tenant?.email || ""}>`);
+    doc.text(`Landlord: ${payment.landlord?.name || ""} <${payment.landlord?.email || ""}>`);
+    doc.text(`Property: ${payment.property?.title || ""}`);
+    doc.text(`Location: ${payment.property?.location || ""}`);
+    doc.moveDown();
+
+    // Paid watermark-ish
+    doc.fillColor('#0a7').fontSize(24).text('PAID', { align: 'center', opacity: 0.5 });
+    doc.fillColor('black').fontSize(12);
+
+    doc.end();
+  } catch (err) {
+    console.error("Receipt PDF error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };

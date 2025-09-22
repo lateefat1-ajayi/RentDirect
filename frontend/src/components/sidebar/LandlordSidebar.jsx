@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   FaHome,
   FaEnvelope,
@@ -10,13 +10,21 @@ import {
   FaUsers,
   FaStar,
   FaCreditCard,
-  FaQuestionCircle
+  FaQuestionCircle,
+  FaSignOutAlt
 } from "react-icons/fa";
 import { cn } from "../../lib/utils";
 import Logo from "../../assets/logo.png";
 
-export default function LandlordSidebar() {
+export default function LandlordSidebar({ onClose }) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/auth/login");
+  };
 
   const linkClass = (path) =>
     cn(
@@ -31,53 +39,51 @@ export default function LandlordSidebar() {
       {/* Top */}
       <div>
         {/* Logo */}
-        <div className="flex items-center gap-2 px-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
-          <img src={Logo} alt="RentDirect" className="h-8 w-8 object-contain" />
+        <Link to="/" className="flex items-center gap-2 px-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+          <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">RD</span>
+          </div>
           <span className="text-lg font-bold text-primary dark:text-white">RentDirect</span>
-        </div>
+        </Link>
 
         {/* Nav */}
         <nav className="space-y-2">
-          <Link to="/landlord/dashboard" className={linkClass("/landlord/dashboard")}>
+          <Link to="/landlord/dashboard" className={linkClass("/landlord/dashboard")} onClick={onClose}>
             <FaHome className="w-4 h-4" />
             <span>Dashboard</span>
           </Link>
 
-          <Link to="/landlord/messages" className={linkClass("/landlord/messages")}>
+          <Link to="/landlord/messages" className={linkClass("/landlord/messages")} onClick={onClose}>
             <FaEnvelope className="w-4 h-4" />
             <span>Messages</span>
           </Link>
 
-          <Link to="/landlord/listings" className={linkClass("/landlord/listings")}>
+          <Link to="/landlord/listings" className={linkClass("/landlord/listings")} onClick={onClose}>
             <FaBuilding className="w-4 h-4" />
             <span>Listings</span>
           </Link>
 
-          <Link to="/landlord/applicants" className={linkClass("/landlord/applicants")}>
+          <Link to="/landlord/applicants" className={linkClass("/landlord/applicants")} onClick={onClose}>
             <FaUsers className="w-4 h-4" />
             <span>Applicants</span>
           </Link>
 
-          <Link to="/landlord/leases" className={linkClass("/landlord/leases")}>
+          <Link to="/landlord/leases" className={linkClass("/landlord/leases")} onClick={onClose}>
             <FaFileContract className="w-4 h-4" />
             <span>Leases</span>
           </Link>
 
-          <Link to="/landlord/reviews" className={linkClass("/landlord/reviews")}>
+          <Link to="/landlord/reviews" className={linkClass("/landlord/reviews")} onClick={onClose}>
             <FaStar className="w-4 h-4" />
             <span>Reviews</span>
           </Link>
 
-          <Link to="/landlord/transactions" className={linkClass("/landlord/transactions")}>
+          <Link to="/landlord/transactions" className={linkClass("/landlord/transactions")} onClick={onClose}>
             <FaCreditCard className="w-4 h-4" />
             <span>Transactions</span>
           </Link>
-          <Link to="/landlord/notifications" className={linkClass("/landlord/notifications")}>
-            <FaBell className="w-4 h-4" />
-            <span>Notifications</span>
-          </Link>
 
-          <Link to="/landlord/contact-history" className={linkClass("/landlord/contact-history")}>
+          <Link to="/landlord/contact-history" className={linkClass("/landlord/contact-history")} onClick={onClose}>
             <FaQuestionCircle className="w-4 h-4" />
             <span>Contact History</span>
           </Link>
@@ -85,17 +91,17 @@ export default function LandlordSidebar() {
         </nav>
       </div>
 
-      {/* Bottom */}
-      <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
-        <Link to="/landlord/profile" className={linkClass("/landlord/profile")}>
-          <FaUser className="w-4 h-4" />
-          <span>Profile</span>
-        </Link>
-        <Link to="/landlord/settings" className={linkClass("/landlord/settings")}>
-          <FaCog className="w-4 h-4" />
-          <span>Settings</span>
-        </Link>
+      {/* Logout Button */}
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-2 rounded transition-all text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+        >
+          <FaSignOutAlt className="w-4 h-4" />
+          <span>Logout</span>
+        </button>
       </div>
+
     </aside>
   );
 }

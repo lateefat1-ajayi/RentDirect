@@ -2,11 +2,14 @@ import { useParams, useLocation, useNavigate, useOutletContext } from "react-rou
 import { useState, useEffect } from "react";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
 import { properties } from "../../data/properties";
 import { toast } from "react-toastify";
 import { apiFetch } from "../../lib/api";
 import ProfileModal from "../../components/ui/ProfileModal";
 import ReviewModal from "../../components/ui/ReviewModal";
+import { FaArrowLeft, FaHeart, FaEnvelope, FaUser, FaStar, FaHome, FaBath, FaRulerCombined } from "react-icons/fa";
+import { useRef } from "react";
 
 export default function PropertyDetails() {
   const { propertyId } = useParams();
@@ -37,6 +40,8 @@ export default function PropertyDetails() {
   const [applying, setApplying] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [applyForm, setApplyForm] = useState({
     // 1) Applicant Information
     fullName: "",
@@ -127,7 +132,7 @@ export default function PropertyDetails() {
       try {
         const conversations = await apiFetch("/conversations");
         const existingConv = conversations.find(conv => 
-          conv.counterpartId === property.landlord._id
+          conv.participantId === property.landlord._id
         );
         
         if (existingConv) {
@@ -259,82 +264,163 @@ export default function PropertyDetails() {
   if (!property) return <p className="p-6 text-sm text-gray-500">Property not found.</p>;
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-xl font-bold">{property.title}</h1>
-      <p className="text-sm text-gray-500">{property.location}</p>
-      <p className="text-lg font-semibold mt-1">₦{property.price?.toLocaleString()}/year</p>
-
-      <div className="flex gap-2 overflow-x-auto">
-        {(Array.isArray(property.images) ? property.images : []).map((img, idx) => {
-          const src = typeof img === "string" ? img : img?.url;
-          if (!src) return null;
-          return (
-            <img
-              key={idx}
-              src={src}
-              alt={`${property.title} ${idx + 1}`}
-              className="w-80 h-40 object-cover rounded-md"
-            />
-          );
-        })}
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      {/* Back Button */}
+      <div className="flex items-center gap-4 mb-2">
+        <button 
+          onClick={() => navigate(-1)}
+          className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+          aria-label="Go back"
+        >
+          <FaArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{property.title}</h1>
       </div>
 
-      <Card className="p-4">
-        <p className="text-sm">{property.description}</p>
-        <div className="mt-2 text-sm text-gray-600 flex gap-4">
-          <span>Bedrooms: {property.bedrooms}</span>
-          <span>Bathrooms: {property.bathrooms}</span>
-          <span>Area: {property.area}</span>
+      {/* Single Property Card */}
+      <Card className="overflow-hidden">
+        {/* Property Images */}
+        <div className="flex gap-2 overflow-x-auto p-3 pb-0">
+          {(Array.isArray(property.images) ? property.images : []).map((img, idx) => {
+            const src = typeof img === "string" ? img : img?.url;
+            if (!src) return null;
+            return (
+              <img
+                key={idx}
+                src={src}
+                alt={`${property.title} ${idx + 1}`}
+                className="w-64 h-40 object-cover rounded-lg flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => {
+                  setSelectedImageIndex(idx);
+                  setShowImageModal(true);
+                }}
+              />
+            );
+          })}
         </div>
-      </Card>
 
-      {/* Landlord Information */}
-      {property?.landlord && (
-        <Card className="p-4">
-          <h3 className="font-semibold mb-3">Property Owner</h3>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                <span className="text-lg font-semibold text-gray-600 dark:text-gray-300">
-                  {property.landlord.name?.charAt(0)?.toUpperCase() || "L"}
-                </span>
-              </div>
-              <div>
-                <p className="font-medium">{property.landlord.name}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {property.landlord.verificationStatus === "approved" ? "✓ Verified Landlord" : "Landlord"}
-                </p>
+        {/* Property Header */}
+        <div className="p-4 pb-3">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <p className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                <span>📍</span>
+                {property.location}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-teal-600">₦{property.price?.toLocaleString()}</p>
+              <p className="text-sm text-gray-500">per year</p>
+            </div>
+          </div>
+
+          {/* Property Features */}
+          <div className="flex gap-4 mb-3">
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <FaHome className="w-4 h-4" />
+              <span>{property.bedrooms} Bedrooms</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <FaBath className="w-4 h-4" />
+              <span>{property.bathrooms} Bathrooms</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <FaRulerCombined className="w-4 h-4" />
+              <span>{property.area}</span>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Description</h3>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">{property.description}</p>
+          </div>
+
+          {/* Landlord Information */}
+          {property?.landlord && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-4">
+              <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+                <FaUser className="w-4 h-4 text-teal-600" />
+                Property Owner
+              </h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900 rounded-full flex items-center justify-center">
+                    <span className="text-lg font-semibold text-teal-600 dark:text-teal-300">
+                      {property.landlord.name?.charAt(0)?.toUpperCase() || "L"}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-base text-gray-900 dark:text-white">{property.landlord.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                      {property.landlord.verificationStatus === "approved" ? (
+                        <>
+                          <FaStar className="w-3 h-3 text-green-500" />
+                          Verified Landlord
+                        </>
+                      ) : (
+                        "Landlord"
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setShowProfileModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <FaUser className="w-3 h-3" />
+                    View Profile
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setShowReviewModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <FaStar className="w-3 h-3" />
+                    Leave Review
+                  </Button>
+                </div>
               </div>
             </div>
-            <div className="flex gap-2">
+          )}
+
+          {/* Action Buttons */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="flex flex-wrap gap-2">
               <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={() => setShowProfileModal(true)}
-                className="px-3 py-1 text-xs"
+                variant="primary" 
+                size="md"
+                onClick={() => setShowApply(true)}
+                className="flex items-center gap-2"
               >
-                View Profile
+                Apply Now
+              </Button>
+              <Button
+                variant={saved ? "secondary" : "outline"}
+                size="md"
+                onClick={handleSaveToggle}
+                disabled={saving}
+                className="flex items-center gap-2"
+              >
+                {saving ? "..." : (saved ? "❤️" : "🤍")}
               </Button>
               <Button 
-                size="sm" 
                 variant="outline" 
-                onClick={() => setShowReviewModal(true)}
-                className="px-3 py-1 text-xs"
+                size="md"
+                onClick={handleMessageLandlord}
+                className="flex items-center gap-2"
               >
-                Leave Review
+                <FaEnvelope className="w-4 h-4" />
+                Message Landlord
               </Button>
             </div>
           </div>
-        </Card>
-      )}
-
-      <div className="flex gap-3">
-        <Button variant="primary" onClick={() => setShowApply(true)}>Apply Now</Button>
-        <Button variant={saved ? "secondary" : "outline"} onClick={handleSaveToggle} disabled={saving}>
-          {saving ? "Updating..." : (saved ? "Remove from Favorites" : "Add to Favorites")}
-        </Button>
-        <Button variant="outline" onClick={handleMessageLandlord}>Message Landlord</Button>
-      </div>
+        </div>
+      </Card>
 
       {showApply && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50">
@@ -347,25 +433,50 @@ export default function PropertyDetails() {
                 <div className="grid grid-cols-1 gap-3">
                   <div>
                     <label className="block text-sm mb-1">Full Name</label>
-                    <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.fullName} onChange={(e) => setApplyForm({ ...applyForm, fullName: e.target.value })} required />
+                    <Input 
+                      type="text" 
+                      value={applyForm.fullName} 
+                      onChange={(e) => setApplyForm({ ...applyForm, fullName: e.target.value })} 
+                      required 
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm mb-1">Date of Birth</label>
-                      <input type="date" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.dob} onChange={(e) => setApplyForm({ ...applyForm, dob: e.target.value })} />
+                      <label className="block text-sm mb-1">Date of Birth *</label>
+                      <Input 
+                        type="date" 
+                        value={applyForm.dob} 
+                        onChange={(e) => setApplyForm({ ...applyForm, dob: e.target.value })} 
+                        required 
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Phone Number</label>
-                      <input type="tel" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.phone} onChange={(e) => setApplyForm({ ...applyForm, phone: e.target.value })} />
+                      <label className="block text-sm mb-1">Phone Number *</label>
+                      <Input 
+                        type="tel" 
+                        value={applyForm.phone} 
+                        onChange={(e) => setApplyForm({ ...applyForm, phone: e.target.value })} 
+                        required 
+                      />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm mb-1">Email Address</label>
-                    <input type="email" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.email} onChange={(e) => setApplyForm({ ...applyForm, email: e.target.value })} />
+                    <label className="block text-sm mb-1">Email Address *</label>
+                    <Input 
+                      type="email" 
+                      value={applyForm.email} 
+                      onChange={(e) => setApplyForm({ ...applyForm, email: e.target.value })} 
+                      required 
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1">Current Residential Address</label>
-                    <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.currentAddress} onChange={(e) => setApplyForm({ ...applyForm, currentAddress: e.target.value })} />
+                    <label className="block text-sm mb-1">Current Residential Address *</label>
+                    <Input 
+                      type="text" 
+                      value={applyForm.currentAddress} 
+                      onChange={(e) => setApplyForm({ ...applyForm, currentAddress: e.target.value })} 
+                      required 
+                    />
                   </div>
                 </div>
               </div>
@@ -376,22 +487,42 @@ export default function PropertyDetails() {
                 <div className="grid grid-cols-1 gap-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm mb-1">Employer Name</label>
-                      <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.employerName} onChange={(e) => setApplyForm({ ...applyForm, employerName: e.target.value })} />
+                      <label className="block text-sm mb-1">Employer Name *</label>
+                      <Input 
+                        type="text" 
+                        value={applyForm.employerName} 
+                        onChange={(e) => setApplyForm({ ...applyForm, employerName: e.target.value })} 
+                        required 
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Job Title</label>
-                      <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.jobTitle} onChange={(e) => setApplyForm({ ...applyForm, jobTitle: e.target.value })} />
+                      <label className="block text-sm mb-1">Job Title *</label>
+                      <Input 
+                        type="text" 
+                        value={applyForm.jobTitle} 
+                        onChange={(e) => setApplyForm({ ...applyForm, jobTitle: e.target.value })} 
+                        required 
+                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm mb-1">Employer Contact</label>
-                      <input type="tel" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.employerPhone} onChange={(e) => setApplyForm({ ...applyForm, employerPhone: e.target.value })} />
+                      <label className="block text-sm mb-1">Employer Contact *</label>
+                      <Input 
+                        type="tel" 
+                        value={applyForm.employerPhone} 
+                        onChange={(e) => setApplyForm({ ...applyForm, employerPhone: e.target.value })} 
+                        required 
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Monthly Income</label>
-                      <input type="number" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.monthlyIncome} onChange={(e) => setApplyForm({ ...applyForm, monthlyIncome: e.target.value })} />
+                      <label className="block text-sm mb-1">Monthly Income *</label>
+                      <Input 
+                        type="number" 
+                        value={applyForm.monthlyIncome} 
+                        onChange={(e) => setApplyForm({ ...applyForm, monthlyIncome: e.target.value })} 
+                        required 
+                      />
                     </div>
                   </div>
                 </div>
@@ -438,7 +569,7 @@ export default function PropertyDetails() {
                   </div>
                   <div>
                     <label className="block text-sm mb-1">Any Pets?</label>
-                    <select className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.hasPets} onChange={(e) => setApplyForm({ ...applyForm, hasPets: e.target.value })}>
+                    <select className="w-full rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" value={applyForm.hasPets} onChange={(e) => setApplyForm({ ...applyForm, hasPets: e.target.value })}>
                       <option value="no">No</option>
                       <option value="yes">Yes</option>
                     </select>
@@ -452,22 +583,42 @@ export default function PropertyDetails() {
                 <div className="grid grid-cols-1 gap-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm mb-1">Reference Name</label>
-                      <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.referenceName} onChange={(e) => setApplyForm({ ...applyForm, referenceName: e.target.value })} />
+                      <label className="block text-sm mb-1">Reference Name *</label>
+                      <Input 
+                        type="text" 
+                        value={applyForm.referenceName} 
+                        onChange={(e) => setApplyForm({ ...applyForm, referenceName: e.target.value })} 
+                        required 
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Relationship</label>
-                      <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.referenceRelationship} onChange={(e) => setApplyForm({ ...applyForm, referenceRelationship: e.target.value })} />
+                      <label className="block text-sm mb-1">Relationship *</label>
+                      <Input 
+                        type="text" 
+                        value={applyForm.referenceRelationship} 
+                        onChange={(e) => setApplyForm({ ...applyForm, referenceRelationship: e.target.value })} 
+                        required 
+                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm mb-1">Reference Phone</label>
-                      <input type="tel" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.referencePhone} onChange={(e) => setApplyForm({ ...applyForm, referencePhone: e.target.value })} />
+                      <label className="block text-sm mb-1">Reference Phone *</label>
+                      <Input 
+                        type="tel" 
+                        value={applyForm.referencePhone} 
+                        onChange={(e) => setApplyForm({ ...applyForm, referencePhone: e.target.value })} 
+                        required 
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Reference Email</label>
-                      <input type="email" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.referenceEmail} onChange={(e) => setApplyForm({ ...applyForm, referenceEmail: e.target.value })} />
+                      <label className="block text-sm mb-1">Reference Email *</label>
+                      <Input 
+                        type="email" 
+                        value={applyForm.referenceEmail} 
+                        onChange={(e) => setApplyForm({ ...applyForm, referenceEmail: e.target.value })} 
+                        required 
+                      />
                     </div>
                   </div>
                 </div>
@@ -482,8 +633,27 @@ export default function PropertyDetails() {
                     I agree to background and reference checks
                   </label>
                   <div>
-                    <label className="block text-sm mb-1">Signature / Digital acceptance</label>
-                    <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" placeholder="Type your full name" value={applyForm.signature} onChange={(e) => setApplyForm({ ...applyForm, signature: e.target.value })} />
+                    <label className="block text-sm mb-1">Signature (draw or upload)</label>
+                    <div className="border rounded-md bg-white overflow-hidden">
+                      <canvas
+                        ref={sigCanvasRef}
+                        className="w-full h-[160px] touch-none"
+                        onMouseDown={(e) => { sigIsDrawingRef.current = true; const ctx = sigCanvasRef.current.getContext('2d'); const r = sigCanvasRef.current.getBoundingClientRect(); ctx.beginPath(); ctx.moveTo(e.clientX - r.left, e.clientY - r.top); e.preventDefault(); }}
+                        onMouseMove={(e) => { if (!sigIsDrawingRef.current) return; const ctx = sigCanvasRef.current.getContext('2d'); const r = sigCanvasRef.current.getBoundingClientRect(); ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#111827'; ctx.lineTo(e.clientX - r.left, e.clientY - r.top); ctx.stroke(); setSigHasDrawn(true); e.preventDefault(); }}
+                        onMouseUp={() => { sigIsDrawingRef.current = false; }}
+                        onMouseLeave={() => { sigIsDrawingRef.current = false; }}
+                        onTouchStart={(e) => { sigIsDrawingRef.current = true; const ctx = sigCanvasRef.current.getContext('2d'); const r = sigCanvasRef.current.getBoundingClientRect(); const t = e.touches[0]; ctx.beginPath(); ctx.moveTo(t.clientX - r.left, t.clientY - r.top); e.preventDefault(); }}
+                        onTouchMove={(e) => { if (!sigIsDrawingRef.current) return; const ctx = sigCanvasRef.current.getContext('2d'); const r = sigCanvasRef.current.getBoundingClientRect(); const t = e.touches[0]; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#111827'; ctx.lineTo(t.clientX - r.left, t.clientY - r.top); ctx.stroke(); setSigHasDrawn(true); e.preventDefault(); }}
+                        onTouchEnd={() => { sigIsDrawingRef.current = false; }}
+                      />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => { const c = sigCanvasRef.current; if (!c) return; const ctx = c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); setSigHasDrawn(false); }}>Clear</Button>
+                      <input ref={sigFileInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(f); }); setApplyForm({ ...applyForm, signature: String(dataUrl) }); }} />
+                      <Button type="button" variant="outline" size="sm" onClick={() => sigFileInputRef.current?.click()}>Upload Image</Button>
+                      <Button type="button" size="sm" onClick={() => { if (!sigCanvasRef.current) return; const dataUrl = sigCanvasRef.current.toDataURL('image/png'); setApplyForm({ ...applyForm, signature: dataUrl }); }}>Use Drawing</Button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Your signature image will be submitted with your application.</p>
                   </div>
                 </div>
               </div>
@@ -534,6 +704,47 @@ export default function PropertyDetails() {
           setShowReviewModal(false);
         }}
       />
+
+      {/* Image Modal */}
+      {showImageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90" onClick={() => setShowImageModal(false)}>
+          <div className="relative max-w-4xl max-h-[90vh] p-4">
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-4 right-4 text-white text-2xl hover:text-gray-300 z-10"
+            >
+              ×
+            </button>
+            <img
+              src={Array.isArray(property.images) && property.images[selectedImageIndex] 
+                ? (typeof property.images[selectedImageIndex] === "string" 
+                    ? property.images[selectedImageIndex] 
+                    : property.images[selectedImageIndex]?.url)
+                : ""
+              }
+              alt={`${property.title} ${selectedImageIndex + 1}`}
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            {Array.isArray(property.images) && property.images.length > 1 && (
+              <div className="flex justify-center gap-2 mt-4">
+                {property.images.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedImageIndex(idx);
+                    }}
+                    className={`w-3 h-3 rounded-full ${
+                      idx === selectedImageIndex ? 'bg-white' : 'bg-gray-400'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

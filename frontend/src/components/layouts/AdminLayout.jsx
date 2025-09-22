@@ -7,7 +7,7 @@ import { apiFetch } from "../../lib/api";
 import { toast } from "react-toastify";
 
 export default function AdminLayout() {
-  const { isOpen, toggle } = useSidebarToggle();
+  const { isOpen, toggle, close } = useSidebarToggle();
   const location = useLocation();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,8 +51,16 @@ export default function AdminLayout() {
           isOpen ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0`}
       >
-        <AdminSidebar />
+        <AdminSidebar onClose={close} />
       </div>
+
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          onClick={close}
+        />
+      )}
 
       {/* Main Area */}
       <div className="flex-1 flex flex-col">

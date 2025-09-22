@@ -16,10 +16,19 @@ export const protect = async (req, res, next) => {
       console.log("Token decoded:", decoded);
       
       req.user = await User.findById(decoded.id).select("-password");
-      console.log("User found:", req.user ? { id: req.user._id, role: req.user.role, email: req.user.email } : null);
+      console.log("User found:", req.user ? { id: req.user._id, role: req.user.role, email: req.user.email, status: req.user.status } : null);
 
       if (!req.user) {
         return res.status(401).json({ message: "User not found" });
+      }
+
+      // Check if user is suspended
+      if (req.user.status === "suspended") {
+        console.log("Access denied for suspended user:", req.user.email);
+        return res.status(403).json({ 
+          message: "Your account has been suspended. Please contact support for assistance.",
+          code: "ACCOUNT_SUSPENDED"
+        });
       }
 
       return next();

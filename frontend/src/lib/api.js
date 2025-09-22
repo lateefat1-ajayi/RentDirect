@@ -17,6 +17,25 @@ export async function apiFetch(endpoint, options = {}) {
     
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
+      
+      // Handle suspended account
+      if (errorData.code === "ACCOUNT_SUSPENDED") {
+        // Clear user data and redirect to login
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/auth/login?message=suspended";
+        return;
+      }
+      
+      // Handle token expiration - only for specific token errors
+      if (res.status === 401 && (errorData.message?.includes("token failed") || errorData.message?.includes("expired"))) {
+        // Clear expired token and redirect to login (without message)
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/auth/login";
+        return;
+      }
+      
       throw new Error(errorData.message || "API request failed");
     }
     return await res.json();
@@ -43,6 +62,25 @@ export async function apiUpload(endpoint, formData, options = {}) {
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
+      
+      // Handle suspended account
+      if (errorData.code === "ACCOUNT_SUSPENDED") {
+        // Clear user data and redirect to login
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/auth/login?message=suspended";
+        return;
+      }
+      
+      // Handle token expiration - only for specific token errors
+      if (res.status === 401 && (errorData.message?.includes("token failed") || errorData.message?.includes("expired"))) {
+        // Clear expired token and redirect to login (without message)
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/auth/login";
+        return;
+      }
+      
       throw new Error(errorData.message || "Upload failed");
     }
 

@@ -14,8 +14,10 @@ export default function AdminLandlords() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedLandlord, setSelectedLandlord] = useState(null);
+
   const [showModal, setShowModal] = useState(false);
-  const [verificationNote, setVerificationNote] = useState("");
+  const [viewingDocument, setViewingDocument] = useState(null);
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
 
   useEffect(() => {
     fetchLandlords();
@@ -51,15 +53,13 @@ export default function AdminLandlords() {
       await apiFetch(`/admin/landlords/${landlordId}/verify`, {
         method: "PUT",
         body: JSON.stringify({
-          action,
-          note: verificationNote
+          action
         })
       });
 
       toast.success(`Landlord ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
       setShowModal(false);
       setSelectedLandlord(null);
-      setVerificationNote("");
       fetchLandlords();
     } catch (error) {
       console.error("Error updating verification:", error);
@@ -75,6 +75,30 @@ export default function AdminLandlords() {
     setSelectedLandlord(landlord);
     setShowModal(true);
   };
+
+  const openDocumentViewer = (documentUrl, documentName) => {
+    setViewingDocument({ url: documentUrl, name: documentName });
+    setShowDocumentModal(true);
+  };
+
+  const closeDocumentViewer = () => {
+    setViewingDocument(null);
+    setShowDocumentModal(false);
+  };
+
+  // Handle keyboard events for document viewer
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (showDocumentModal && e.key === 'Escape') {
+        closeDocumentViewer();
+      }
+    };
+
+    if (showDocumentModal) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [showDocumentModal]);
 
   const filteredLandlords = landlords.filter(landlord => {
     const matchesSearch = landlord.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -229,9 +253,9 @@ export default function AdminLandlords() {
       </div>
 
       {/* Verification Modal */}
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} size="xl">
         {selectedLandlord && (
-          <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+          <div className="p-6 space-y-6 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center space-x-4">
               <Avatar
                 name={selectedLandlord.name}
@@ -306,23 +330,23 @@ export default function AdminLandlords() {
                   </div>
                   {/* Business Information */}
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Business Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-3">Business Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Business Name:</span>
-                        <p className="font-medium">
+                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Business Name:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {selectedLandlord.verificationData.businessInfo?.businessName || 'Not provided'}
                         </p>
                       </div>
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Business Address:</span>
-                        <p className="font-medium">
+                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Business Address:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {selectedLandlord.verificationData.businessInfo?.businessAddress || 'Not provided'}
                         </p>
                       </div>
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Phone Number:</span>
-                        <p className="font-medium">
+                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Phone Number:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {selectedLandlord.verificationData.businessInfo?.phoneNumber || 'Not provided'}
                         </p>
                       </div>
@@ -331,11 +355,11 @@ export default function AdminLandlords() {
 
                   {/* Identification Information */}
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Identification</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-3">Identification</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">ID Type:</span>
-                        <p className="font-medium capitalize">
+                        <span className="text-gray-600 dark:text-gray-400 block mb-1">ID Type:</span>
+                        <p className="font-medium text-gray-900 dark:text-white capitalize">
                           {selectedLandlord.verificationData.identification?.type 
                             ? selectedLandlord.verificationData.identification.type.replace('_', ' ')
                             : 'Not provided'
@@ -343,8 +367,8 @@ export default function AdminLandlords() {
                         </p>
                       </div>
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">ID Number:</span>
-                        <p className="font-medium">
+                        <span className="text-gray-600 dark:text-gray-400 block mb-1">ID Number:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {selectedLandlord.verificationData.identification?.number || 'Not provided'}
                         </p>
                       </div>
@@ -353,23 +377,23 @@ export default function AdminLandlords() {
 
                   {/* Bank Information */}
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Bank Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-3">Bank Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Bank Name:</span>
-                        <p className="font-medium">
+                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Bank Name:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {selectedLandlord.verificationData.bankInfo?.bankName || 'Not provided'}
                         </p>
                       </div>
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Account Number:</span>
-                        <p className="font-medium">
+                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Account Number:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {selectedLandlord.verificationData.bankInfo?.accountNumber || 'Not provided'}
                         </p>
                       </div>
                       <div>
-                        <span className="text-gray-600 dark:text-gray-400">Account Name:</span>
-                        <p className="font-medium">
+                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Account Name:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {selectedLandlord.verificationData.bankInfo?.accountName || 'Not provided'}
                         </p>
                       </div>
@@ -381,25 +405,19 @@ export default function AdminLandlords() {
                     <h4 className="font-medium text-gray-900 dark:text-white mb-2">Uploaded Documents</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {selectedLandlord.verificationData.documents.identification && (
-                        <div className="p-3 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-sm">Identification Document</span>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => window.open(selectedLandlord.verificationData.documents.identification, '_blank')}
-                              className="flex items-center gap-1 text-xs px-2 py-1"
-                            >
-                              <FaDownload className="w-2 h-2" />
-                              View
-                            </Button>
+                        <div 
+                          className="p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                          onClick={() => openDocumentViewer(selectedLandlord.verificationData.documents.identification, "Identification Document")}
+                        >
+                          <div className="mb-2">
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">Identification Document</span>
                           </div>
                           {/* Image Preview */}
-                          <div className="mb-2">
+                          <div className="relative mb-2">
                             <img
                               src={selectedLandlord.verificationData.documents.identification}
                               alt="Identification Document"
-                              className="max-w-full h-32 object-contain rounded border"
+                              className="w-full h-32 object-cover rounded border"
                               onError={(e) => {
                                 e.target.style.display = 'none';
                                 e.target.nextSibling.style.display = 'block';
@@ -408,31 +426,30 @@ export default function AdminLandlords() {
                             <div className="hidden text-xs text-gray-500 text-center p-2 bg-gray-100 rounded">
                               Image preview not available
                             </div>
+                            {/* Overlay with click hint */}
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded border flex items-center justify-center">
+                              <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black bg-opacity-50 px-2 py-1 rounded">
+                                Click to view
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-500">Click View to open document in new tab</p>
                         </div>
                       )}
                       
                       {selectedLandlord.verificationData.documents.utilityBill && (
-                        <div className="p-3 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-sm">Utility Bill</span>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => window.open(selectedLandlord.verificationData.documents.utilityBill, '_blank')}
-                              className="flex items-center gap-1 text-xs px-2 py-1"
-                            >
-                              <FaDownload className="w-2 h-2" />
-                              View
-                            </Button>
+                        <div 
+                          className="p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                          onClick={() => openDocumentViewer(selectedLandlord.verificationData.documents.utilityBill, "Utility Bill")}
+                        >
+                          <div className="mb-2">
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">Utility Bill</span>
                           </div>
                           {/* Image Preview */}
-                          <div className="mb-2">
+                          <div className="relative mb-2">
                             <img
                               src={selectedLandlord.verificationData.documents.utilityBill}
                               alt="Utility Bill"
-                              className="max-w-full h-32 object-contain rounded border"
+                              className="w-full h-32 object-cover rounded border"
                               onError={(e) => {
                                 e.target.style.display = 'none';
                                 e.target.nextSibling.style.display = 'block';
@@ -441,31 +458,30 @@ export default function AdminLandlords() {
                             <div className="hidden text-xs text-gray-500 text-center p-2 bg-gray-100 rounded">
                               Image preview not available
                             </div>
+                            {/* Overlay with click hint */}
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded border flex items-center justify-center">
+                              <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black bg-opacity-50 px-2 py-1 rounded">
+                                Click to view
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-500">Click View to open document in new tab</p>
                         </div>
                       )}
 
                       {selectedLandlord.verificationData.documents.bankStatement && (
-                        <div className="p-3 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-sm">Bank Statement</span>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => window.open(selectedLandlord.verificationData.documents.bankStatement, '_blank')}
-                              className="flex items-center gap-1 text-xs px-2 py-1"
-                            >
-                              <FaDownload className="w-2 h-2" />
-                              View
-                            </Button>
+                        <div 
+                          className="p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                          onClick={() => openDocumentViewer(selectedLandlord.verificationData.documents.bankStatement, "Bank Statement")}
+                        >
+                          <div className="mb-2">
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">Bank Statement</span>
                           </div>
                           {/* Image Preview */}
-                          <div className="mb-2">
+                          <div className="relative mb-2">
                             <img
                               src={selectedLandlord.verificationData.documents.bankStatement}
                               alt="Bank Statement"
-                              className="max-w-full h-32 object-contain rounded border"
+                              className="w-full h-32 object-cover rounded border"
                               onError={(e) => {
                                 e.target.style.display = 'none';
                                 e.target.nextSibling.style.display = 'block';
@@ -474,31 +490,30 @@ export default function AdminLandlords() {
                             <div className="hidden text-xs text-gray-500 text-center p-2 bg-gray-100 rounded">
                               Image preview not available
                             </div>
+                            {/* Overlay with click hint */}
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded border flex items-center justify-center">
+                              <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black bg-opacity-50 px-2 py-1 rounded">
+                                Click to view
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-500">Click View to open document in new tab</p>
                         </div>
                       )}
 
                       {selectedLandlord.verificationData.documents.propertyDocuments && (
-                        <div className="p-3 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-sm">Property Documents</span>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => window.open(selectedLandlord.verificationData.documents.propertyDocuments, '_blank')}
-                              className="flex items-center gap-1 text-xs px-2 py-1"
-                            >
-                              <FaDownload className="w-2 h-2" />
-                              View
-                            </Button>
+                        <div 
+                          className="p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                          onClick={() => openDocumentViewer(selectedLandlord.verificationData.documents.propertyDocuments, "Property Documents")}
+                        >
+                          <div className="mb-2">
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">Property Documents</span>
                           </div>
                           {/* Image Preview */}
-                          <div className="mb-2">
+                          <div className="relative mb-2">
                             <img
                               src={selectedLandlord.verificationData.documents.propertyDocuments}
                               alt="Property Documents"
-                              className="max-w-full h-32 object-contain rounded border"
+                              className="w-full h-32 object-cover rounded border"
                               onError={(e) => {
                                 e.target.style.display = 'none';
                                 e.target.nextSibling.style.display = 'block';
@@ -507,8 +522,13 @@ export default function AdminLandlords() {
                             <div className="hidden text-xs text-gray-500 text-center p-2 bg-gray-100 rounded">
                               Image preview not available
                             </div>
+                            {/* Overlay with click hint */}
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded border flex items-center justify-center">
+                              <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black bg-opacity-50 px-2 py-1 rounded">
+                                Click to view
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-500">Click View to open document in new tab</p>
                         </div>
                       )}
                     </div>
@@ -576,19 +596,6 @@ export default function AdminLandlords() {
               )}
             </div>
 
-            {/* Verification Note */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Verification Note (Optional)
-              </label>
-              <textarea
-                value={verificationNote}
-                onChange={(e) => setVerificationNote(e.target.value)}
-                placeholder="Add a note about this verification decision..."
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                rows="3"
-              />
-            </div>
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-3 pt-4">
@@ -620,6 +627,109 @@ export default function AdminLandlords() {
           </div>
         )}
       </Modal>
+
+      {/* Document Viewer Modal */}
+      {showDocumentModal && viewingDocument && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm">
+          <div className="relative w-[95vw] h-[95vh] max-w-7xl bg-black rounded-lg overflow-hidden shadow-2xl">
+            {/* Close Button */}
+            <button
+              onClick={closeDocumentViewer}
+              className="absolute top-4 right-4 z-50 text-white hover:text-gray-300 bg-black/50 rounded-full w-12 h-12 flex items-center justify-center text-2xl font-bold transition-colors backdrop-blur-sm"
+              title="Close (ESC)"
+            >
+              ×
+            </button>
+
+            {/* Document Title */}
+            <div className="absolute top-4 left-4 text-white text-xl font-semibold bg-black/50 px-4 py-2 rounded backdrop-blur-sm">
+              {viewingDocument.name}
+            </div>
+            
+            {/* Document Container */}
+            <div className="w-full h-full flex items-center justify-center p-4 pt-20 pb-20">
+              {viewingDocument.url.toLowerCase().includes('.pdf') ? (
+                <iframe
+                  src={viewingDocument.url}
+                  className="w-full h-full border-0 rounded"
+                  title={viewingDocument.name}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <img
+                    src={viewingDocument.url}
+                    alt={viewingDocument.name}
+                    className="max-w-full max-h-full object-contain rounded shadow-2xl"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      width: 'auto',
+                      height: 'auto'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Download Button */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => window.open(viewingDocument.url, '_blank')}
+                className="flex items-center gap-2 bg-white/90 hover:bg-white text-black font-medium"
+              >
+                <FaDownload className="w-4 h-4" />
+                Download
+              </Button>
+            </div>
+
+            {/* Zoom Controls for Images */}
+            {!viewingDocument.url.toLowerCase().includes('.pdf') && (
+              <div className="absolute bottom-4 right-4 flex gap-2">
+                <button
+                  onClick={() => {
+                    const img = document.querySelector('.document-viewer img');
+                    if (img) {
+                      const currentScale = parseFloat(img.style.transform?.match(/scale\(([^)]+)\)/) || [1, '1'])[1];
+                      img.style.transform = `scale(${Math.max(0.5, currentScale - 0.25)})`;
+                    }
+                  }}
+                  className="bg-black/50 text-white px-3 py-2 rounded backdrop-blur-sm hover:bg-black/70 transition-colors"
+                  title="Zoom Out"
+                >
+                  −
+                </button>
+                <button
+                  onClick={() => {
+                    const img = document.querySelector('.document-viewer img');
+                    if (img) {
+                      const currentScale = parseFloat(img.style.transform?.match(/scale\(([^)]+)\)/) || [1, '1'])[1];
+                      img.style.transform = `scale(${Math.min(3, currentScale + 0.25)})`;
+                    }
+                  }}
+                  className="bg-black/50 text-white px-3 py-2 rounded backdrop-blur-sm hover:bg-black/70 transition-colors"
+                  title="Zoom In"
+                >
+                  +
+                </button>
+                <button
+                  onClick={() => {
+                    const img = document.querySelector('.document-viewer img');
+                    if (img) {
+                      img.style.transform = 'scale(1)';
+                    }
+                  }}
+                  className="bg-black/50 text-white px-3 py-2 rounded backdrop-blur-sm hover:bg-black/70 transition-colors"
+                  title="Reset Zoom"
+                >
+                  ⌂
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

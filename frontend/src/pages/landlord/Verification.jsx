@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
@@ -7,6 +8,7 @@ import { toast } from "react-toastify";
 import { FaUpload, FaFileAlt, FaCheckCircle, FaClock, FaTimesCircle } from "react-icons/fa";
 
 export default function LandlordVerification() {
+  const navigate = useNavigate();
   const [verificationData, setVerificationData] = useState({
     businessName: "",
     businessAddress: "",
@@ -61,19 +63,32 @@ export default function LandlordVerification() {
         newUrls[key] = URL.createObjectURL(documents[key]);
       }
     });
-    setImageUrls(newUrls);
+    
+    // Cleanup old URLs before setting new ones
+    setImageUrls(prevUrls => {
+      Object.values(prevUrls).forEach(url => {
+        if (url) URL.revokeObjectURL(url);
+      });
+      return newUrls;
+    });
 
-    // Cleanup old URLs
+    // Cleanup function for component unmount
     return () => {
-      Object.values(newUrls).forEach(url => URL.revokeObjectURL(url));
+      Object.values(newUrls).forEach(url => {
+        if (url) URL.revokeObjectURL(url);
+      });
     };
   }, [documents]);
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = async (showLoading = true) => {
     try {
+      if (showLoading) setLoading(true);
+      
       // First try to get from localStorage for immediate display
       const userData = JSON.parse(localStorage.getItem("user") || "{}");
-      setUserProfile(userData);
+      if (userData && Object.keys(userData).length > 0) {
+        setUserProfile(userData);
+      }
       
       // Then fetch fresh data from backend
       try {
@@ -84,9 +99,15 @@ export default function LandlordVerification() {
       } catch (error) {
         console.error("Error fetching fresh profile:", error);
         // If backend fetch fails, keep using localStorage data
+        if (!userData || Object.keys(userData).length === 0) {
+          toast.error("Failed to load profile data. Please refresh the page.");
+        }
       }
     } catch (error) {
       console.error("Error parsing user profile:", error);
+      toast.error("Error loading profile data");
+    } finally {
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -118,6 +139,14 @@ export default function LandlordVerification() {
         toast.error("File size must be less than 5MB");
         return;
       }
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Please upload only JPG, PNG, or PDF files");
+        return;
+      }
+      
       setDocuments({
         ...documents,
         [documentType]: file
@@ -136,14 +165,25 @@ export default function LandlordVerification() {
       });
     }
     
-    setDocuments({
-      ...documents,
+    setDocuments(prev => ({
+      ...prev,
       [documentType]: null
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!verificationData.businessName || !verificationData.businessAddress || !verificationData.phoneNumber) {
+      toast.error("Please fill in all required business information fields");
+      return;
+    }
+    
+    if (!verificationData.identificationNumber) {
+      toast.error("Please enter your identification number");
+      return;
+    }
     
     if (!documents.identification || !documents.utilityBill) {
       toast.error("Please upload required documents (ID and Utility Bill)");
@@ -157,17 +197,32 @@ export default function LandlordVerification() {
       
       // Add verification data
       Object.keys(verificationData).forEach(key => {
-        formData.append(key, verificationData[key]);
+        if (verificationData[key]) {
+          formData.append(key, verificationData[key]);
+          console.log(`Added to formData: ${key} = ${verificationData[key]}`);
+        }
       });
       
       // Add documents
       Object.keys(documents).forEach(key => {
         if (documents[key]) {
           formData.append(key, documents[key]);
+          console.log(`Added document to formData: ${key} = ${documents[key].name} (${documents[key].size} bytes)`);
         }
       });
 
+      console.log("Submitting verification with data:", {
+        businessName: verificationData.businessName,
+        businessAddress: verificationData.businessAddress,
+        phoneNumber: verificationData.phoneNumber,
+        identificationType: verificationData.identificationType,
+        identificationNumber: verificationData.identificationNumber,
+        documentCount: Object.keys(documents).filter(key => documents[key]).length
+      });
+
       const response = await apiUpload("/landlord/verification", formData, { method: "POST" });
+      
+      console.log("Verification submission response:", response);
       
       toast.success("Verification request submitted successfully! Please wait for admin approval.");
       
@@ -178,6 +233,12 @@ export default function LandlordVerification() {
       
       // Clear saved form data from localStorage
       localStorage.removeItem('landlordVerificationForm');
+      
+      // Cleanup object URLs
+      Object.values(imageUrls).forEach(url => {
+        if (url) URL.revokeObjectURL(url);
+      });
+      setImageUrls({});
       
       // Reset form
       setVerificationData({
@@ -199,7 +260,11 @@ export default function LandlordVerification() {
       
     } catch (error) {
       console.error("Error submitting verification:", error);
-      toast.error("Failed to submit verification request");
+      if (error.message) {
+        toast.error(`Failed to submit verification request: ${error.message}`);
+      } else {
+        toast.error("Failed to submit verification request. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -252,11 +317,11 @@ export default function LandlordVerification() {
             Your account has been verified. You can now list properties on our platform.
           </p>
           <div className="space-y-3">
-            <Button onClick={() => window.location.href = "/landlord/listings"}>
+            <Button onClick={() => navigate("/landlord/listings")}>
               Start Listing Properties
             </Button>
             <Button 
-              onClick={fetchUserProfile}
+              onClick={() => fetchUserProfile(false)}
               variant="outline"
               className="px-6"
             >
@@ -328,6 +393,11 @@ export default function LandlordVerification() {
                 setUserProfile(updatedProfile);
                 // Clear any saved form data to start fresh
                 localStorage.removeItem('landlordVerificationForm');
+                // Cleanup any existing object URLs
+                Object.values(imageUrls).forEach(url => {
+                  if (url) URL.revokeObjectURL(url);
+                });
+                setImageUrls({});
                 toast.success("You can now resubmit your verification request");
               }}
               variant="primary"
@@ -795,6 +865,7 @@ export default function LandlordVerification() {
             <Button
               type="submit"
               disabled={loading}
+              isLoading={loading}
               className="px-8"
             >
               {loading ? "Submitting..." : "Submit Verification Request"}

@@ -1,8 +1,35 @@
 import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import Logo from "../../assets/logo.png";
 import Button from "../ui/Button";
 
 export default function LandingNavbar() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    
+    if (token && userData._id) {
+      setIsAuthenticated(true);
+      setUser(userData);
+    }
+  }, []);
+
+  const getDashboardLink = () => {
+    if (!user) return "/auth/login";
+    
+    switch (user.role) {
+      case "landlord":
+        return "/landlord/dashboard";
+      case "admin":
+        return "/admin/dashboard";
+      default:
+        return "/user/dashboard";
+    }
+  };
+
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -22,12 +49,20 @@ export default function LandingNavbar() {
 
         {/* Right: Buttons */}
         <div className="hidden md:flex gap-3 items-center">
-          <Link to="/auth/login">
-            <Button variant="outline" size="sm">Login</Button>
-          </Link>
-          <Link to="/auth/register">
-            <Button variant="primary" size="sm">Get Started</Button>
-          </Link>
+          {isAuthenticated ? (
+            <Link to="/auth/login">
+              <Button variant="outline" size="sm">Login</Button>
+            </Link>
+          ) : (
+            <>
+              <Link to="/auth/login">
+                <Button variant="outline" size="sm">Login</Button>
+              </Link>
+              <Link to="/auth/register">
+                <Button variant="primary" size="sm">Get Started</Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

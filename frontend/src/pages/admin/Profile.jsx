@@ -138,12 +138,11 @@ export default function AdminProfile() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Profile</h1>
+      {/* Role Indicator */}
+      <div className="flex justify-end">
         <div className="flex items-center space-x-2">
-          <FaShieldAlt className="w-5 h-5 text-blue-600" />
-          <span className="text-sm text-blue-600 font-medium">Administrator</span>
+          <FaShieldAlt className="w-5 h-5 text-teal-600" />
+          <span className="text-sm text-teal-600 font-medium">Administrator</span>
         </div>
       </div>
 
@@ -284,60 +283,22 @@ export default function AdminProfile() {
                     Member Since
                   </label>
                   <p className="text-gray-900 dark:text-white">
-                    {new Date(profile?.createdAt).toLocaleDateString()}
+                    {(() => {
+                      if (!profile?.createdAt) return 'N/A';
+                      try {
+                        const date = new Date(profile.createdAt);
+                        return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+                      } catch (error) {
+                        console.error('Date formatting error:', error);
+                        return 'N/A';
+                      }
+                    })()}
                   </p>
                 </div>
               </div>
             )}
           </Card>
 
-          {/* Theme Settings */}
-          <Card className="p-6 mt-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <FaPalette className="w-5 h-5 text-purple-600" />
-              Theme Settings
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="flex items-center gap-3">
-                  {isDark ? (
-                    <FaMoon className="w-5 h-5 text-blue-600" />
-                  ) : (
-                    <FaSun className="w-5 h-5 text-yellow-600" />
-                  )}
-                  <div>
-                    <h4 className="font-medium text-gray-900 dark:text-white">Dark Mode</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isDark ? "Currently using dark theme" : "Currently using light theme"}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  onClick={toggleDarkMode}
-                  variant="secondary"
-                  className="flex items-center gap-2"
-                >
-                  {isDark ? (
-                    <>
-                      <FaSun className="w-4 h-4" />
-                      Switch to Light
-                    </>
-                  ) : (
-                    <>
-                      <FaMoon className="w-4 h-4" />
-                      Switch to Dark
-                    </>
-                  )}
-                </Button>
-              </div>
-              
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                <p>• Theme preference is saved automatically</p>
-                <p>• Changes apply immediately across the admin panel</p>
-                <p>• Your preference will be remembered for future sessions</p>
-              </div>
-            </div>
-          </Card>
 
           {/* Admin Statistics */}
           <Card className="p-6 mt-6">

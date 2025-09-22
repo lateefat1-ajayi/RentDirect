@@ -2,6 +2,7 @@ import Application from "../models/Application.js";
 import Property from "../models/Property.js";
 import Lease from "../models/Lease.js";
 import Notification from "../models/Notification.js";
+import User from "../models/User.js";
 import { createNotification } from "./notificationController.js";
 
 export const applyForProperty = async (req, res) => {
@@ -127,9 +128,20 @@ export const getLandlordApplications = async (req, res) => {
     console.log("Sample application:", applications[0]);
 
     const landlordApps = applications.filter(app => {
+      // Skip applications with missing or corrupted data
+      if (!app.property || !app.property.landlord) {
+        console.log("Skipping application with missing property/landlord data:", app._id);
+        return false;
+      }
+      
       // Ensure both are ObjectIds for comparison
       const propertyLandlordId = app.property.landlord._id || app.property.landlord;
       const currentUserId = req.user._id;
+      
+      if (!propertyLandlordId) {
+        console.log("Skipping application with missing landlord ID:", app._id);
+        return false;
+      }
       
       const isOwner = propertyLandlordId.toString() === currentUserId.toString();
       
@@ -234,8 +246,8 @@ export const updateApplicationStatus = async (req, res) => {
       application.lease = lease._id;
       await application.save();
 
-      property.status = "under_maintenance"; // Set to pending status when approved
-      await property.save();
+      // Keep property as "available" until payment is made
+      // Property status will change to "rented" only after successful payment
 
       // Reject all other pending applications for this property
       await Application.updateMany(

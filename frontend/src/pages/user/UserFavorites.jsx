@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import { apiFetch } from "../../lib/api";
 import { toast } from "react-toastify";
+import { FaArrowLeft } from "react-icons/fa";
 
 export default function UserFavorites() {
   const [savedProperties, setSavedProperties] = useState([]);
@@ -73,7 +74,7 @@ export default function UserFavorites() {
 
             <div className="mt-3 flex gap-2">
               <Link to={`/user/properties/${property._id || property.id}`} state={{ property }}>
-                <Button variant="primary" size="sm">View Details</Button>
+                <Button variant="primary" size="md">View Details</Button>
               </Link>
               <Button
                 variant="danger"

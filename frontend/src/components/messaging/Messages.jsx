@@ -8,6 +8,8 @@ import Modal from '../ui/Modal';
 import { useMessaging } from '../../contexts/MessagingContext';
 import { toast } from 'react-toastify';
 import { apiFetch } from '../../lib/api';
+import { emitTyping } from '../../services/socket';
+import ProfileModal from '../ui/ProfileModal';
 
 export default function Messages() {
   const {
@@ -18,7 +20,8 @@ export default function Messages() {
     sendingMessage,
     sendMessage,
     selectConversation,
-    fetchConversations
+    fetchConversations,
+    partnerTyping
   } = useMessaging();
 
   const location = useLocation();
@@ -65,6 +68,8 @@ export default function Messages() {
     
     await sendMessage(selectedConversationId, newMessage);
     setNewMessage("");
+    // Stop typing when message is sent
+    emitTyping(selectedConversationId, false);
   };
 
   // Handle editing message
@@ -194,7 +199,7 @@ export default function Messages() {
                 key={conv.id}
                 onClick={() => selectConversation(conv.id)}
                 className={`p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                  selectedConversationId === conv.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' : ''
+                  selectedConversationId === conv.id ? 'bg-teal-50 dark:bg-teal-900/20 border-l-4 border-l-teal-500' : ''
                 }`}
               >
                 <div className="flex items-center space-x-3">
@@ -243,36 +248,34 @@ export default function Messages() {
                       <path fillRule="evenodd" d="M15.78 4.72a.75.75 0 0 1 0 1.06L9.56 12l6.22 6.22a.75.75 0 1 1-1.06 1.06l-6.75-6.75a.75.75 0 0 1 0-1.06l6.75-6.75a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />
                     </svg>
                   </button>
-                  <Avatar
-                    src={selectedConversation.participantImage || null}
-                    alt={selectedConversation.participantName || 'Unknown User'}
-                    size="w-8 h-8"
-                    isOnline={true} // You can implement real-time online status later
-                  />
+                  <button
+                    onClick={() => {
+                      setProfileUser({
+                        id: selectedConversation.participantId || 'unknown',
+                        name: selectedConversation.participantName || 'Unknown User',
+                        role: selectedConversation.participantRole || 'user',
+                        profileImage: selectedConversation.participantImage || null
+                      });
+                      setShowProfileModal(true);
+                    }}
+                    className="hover:opacity-80 transition-opacity"
+                  >
+                    <Avatar
+                      src={selectedConversation.participantImage || null}
+                      alt={selectedConversation.participantName || 'Unknown User'}
+                      size="w-8 h-8"
+                      isOnline={true} // You can implement real-time online status later
+                    />
+                  </button>
                   <div>
                     <h2 className="font-semibold text-gray-900 dark:text-white">
                       {selectedConversation.participantName || 'Unknown User'}
                     </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {selectedConversation.participantRole ? selectedConversation.participantRole.charAt(0).toUpperCase() + selectedConversation.participantRole.slice(1) : 'User'}
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {partnerTyping ? 'Typing…' : (selectedConversation.participantRole ? selectedConversation.participantRole.charAt(0).toUpperCase() + selectedConversation.participantRole.slice(1) : 'User')}
                     </p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setProfileUser({
-                      id: selectedConversation.participantId || 'unknown',
-                      name: selectedConversation.participantName || 'Unknown User',
-                      role: selectedConversation.participantRole || 'user',
-                      profileImage: selectedConversation.participantImage || null
-                    });
-                    setShowProfileModal(true);
-                  }}
-                >
-                  View Profile
-                </Button>
               </div>
             </div>
 
@@ -293,7 +296,7 @@ export default function Messages() {
                       <div
                         className={`px-4 py-2 rounded-lg ${
                           msg.fromMe
-                            ? 'bg-blue-500 text-white'
+                            ? 'bg-teal-500 text-white'
                             : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
                         }`}
                       >
@@ -301,34 +304,32 @@ export default function Messages() {
                         
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
-                            {/* Removed sender name - redundant in chat */}
                           </div>
                           <span className="text-xs opacity-75">
                             {formatMessageTime(msg.date)}
                           </span>
                         </div>
-                        
-                        {/* Message Actions */}
-                        {msg.fromMe && (
-                          <div className="flex items-center space-x-2 mt-2 opacity-0 hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => {
-                                setEditingMessage(msg);
-                                setEditText(msg.text || '');
-                              }}
-                              className="text-xs text-blue-200 hover:text-white"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => setDeleteMessageId(msg.id)}
-                              className="text-xs text-red-200 hover:text-red-100"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
                       </div>
+                      {/* Message Actions outside bubble */}
+                      {msg.fromMe && (
+                        <div className="flex items-center justify-end gap-3 mt-1">
+                          <button
+                            onClick={() => {
+                              setEditingMessage(msg);
+                              setEditText(msg.text || '');
+                            }}
+                            className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setDeleteMessageId(msg.id)}
+                            className="text-xs text-red-400 hover:text-red-600"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -342,10 +343,14 @@ export default function Messages() {
                 <Input
                   placeholder="Type your message..."
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={(e) => {
+                    setNewMessage(e.target.value);
+                  }}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   className="flex-1"
                   disabled={sendingMessage}
+                  onFocus={() => selectedConversationId && emitTyping(selectedConversationId, true)}
+                  onBlur={() => selectedConversationId && emitTyping(selectedConversationId, false)}
                 />
                 <Button
                   onClick={handleSendMessage}
@@ -406,27 +411,16 @@ export default function Messages() {
         </Modal>
       )}
 
-      {/* Profile Modal */}
+      {/* Profile Modal - unified across app with reviews */}
       {showProfileModal && profileUser && (
-        <Modal
+        <ProfileModal
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
-          title={`${profileUser.name}'s Profile`}
-        >
-          <div className="space-y-4">
-            <div className="text-center">
-              <Avatar
-                src={profileUser.profileImage}
-                alt={profileUser.name}
-                size="w-16 h-16"
-                className="mx-auto mb-4"
-              />
-              <h3 className="text-lg font-semibold">{profileUser.name}</h3>
-              <p className="text-gray-500 capitalize">{profileUser.role}</p>
-            </div>
-            {/* Add more profile details here */}
-          </div>
-        </Modal>
+          userId={profileUser.id}
+          userRole={profileUser.role}
+          currentUserRole={localStorage.getItem('userRole') || 'user'}
+          currentUserId={localStorage.getItem('userId') || null}
+        />
       )}
 
       {/* Delete Message Confirmation Modal */}

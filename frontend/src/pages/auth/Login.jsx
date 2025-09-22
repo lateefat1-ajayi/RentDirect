@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Input from "../../components/ui/Input";
 import PasswordInput from "../../components/ui/PasswordInput";
 import Button from "../../components/ui/Button";
 import { toast } from "react-toastify";
-import { FaShieldAlt, FaHandshake, FaHome, FaUsers } from "react-icons/fa";
+import { FaShieldAlt, FaHandshake, FaHome, FaUsers, FaExclamationTriangle } from "react-icons/fa";
 import HeroImage from "../../assets/HeroImage.jpg";
 
 export default function Login() {
@@ -13,6 +13,19 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Check for suspension messages only
+  useEffect(() => {
+    const message = searchParams.get("message");
+    if (message === "suspended") {
+      toast.error("Your account has been suspended. Please contact support for assistance.", {
+        duration: 10000,
+        position: "top-center"
+      });
+    }
+    // Removed expired token toast since login is working correctly
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,14 +45,48 @@ export default function Login() {
 
     } catch (err) {
       if (err.response?.status === 403) {
-        toast.warning(err.response.data.message || "Please confirm your email first");
-        try {
-          const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
-          await axios.post(`${apiBase}/auth/resend-confirmation`, { email });
-          toast.info("A new verification email has been sent.");
-        } catch (_) {
-          // ignore
+        // Check if it's a suspended account
+        if (err.response.data.code === "ACCOUNT_SUSPENDED") {
+          toast.error("Your account has been suspended. Please contact support for assistance.", {
+            duration: 10000,
+            position: "top-center"
+          });
+        } else {
+          // Email not confirmed - show clear message without auto-resending
+          toast.warning(err.response.data.message || "Please confirm your email first", {
+            duration: 8000,
+            position: "top-center"
+          });
+          
+          // Show a button to resend confirmation instead of auto-sending
+          setTimeout(() => {
+            toast.info(
+              <div className="flex items-center gap-2">
+                <span>Need a new confirmation email?</span>
+                <button
+                  onClick={async () => {
+                    try {
+                      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+                      await axios.post(`${apiBase}/auth/resend-confirmation`, { email });
+                      toast.success("Confirmation email sent!");
+                    } catch (error) {
+                      toast.error("Failed to send confirmation email");
+                    }
+                  }}
+                  className="px-3 py-1 bg-teal-600 text-white text-sm rounded hover:bg-teal-700"
+                >
+                  Resend Email
+                </button>
+              </div>,
+              {
+                duration: 10000,
+                position: "top-center"
+              }
+            );
+          }, 2000);
         }
+      } else if (err.response?.status === 401) {
+        toast.error("Invalid email or password");
       } else {
         toast.error(err.response?.data?.message || "Login failed ❌");
       }

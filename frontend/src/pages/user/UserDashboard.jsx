@@ -11,12 +11,12 @@ export default function UserDashboard() {
   const userName = profile?.name || "User";
   const [loading, setLoading] = useState(true);
 
-  const [stats, setStats] = useState([
-    { id: 1, label: "Active Applications", value: 0, link: "/user/applications", icon: <FaFileSignature className="text-emerald-600" /> },
-    { id: 2, label: "Leases", value: 0, link: "/user/leases", icon: <FaHandshake className="text-blue-600" /> },
-    { id: 3, label: "Payments", value: 0, link: "/user/payments", icon: <FaMoneyBillWave className="text-amber-600" /> },
-    { id: 4, label: "Messages", value: 0, link: "/user/messages", icon: <FaComments className="text-slate-600" /> },
-  ]);
+  const [stats, setStats] = useState({
+    totalApplications: 0,
+    activeLeases: 0,
+    totalPayments: 0,
+    unreadMessages: 0
+  });
 
   const { notifications } = useNotifications(); 
 
@@ -28,13 +28,12 @@ export default function UserDashboard() {
         const payments = await apiFetch("/payments/history").catch(() => []);
         const msgs = await apiFetch("/conversations").catch(() => []);
 
-        setStats((s) => s.map((item) => {
-          if (item.label === "Active Applications") return { ...item, value: apps?.length || 0 };
-          if (item.label === "Leases") return { ...item, value: leases?.length || 0 };
-          if (item.label === "Payments") return { ...item, value: payments?.length || 0 };
-          if (item.label === "Messages") return { ...item, value: msgs?.length || 0 };
-          return item;
-        }));
+        setStats({
+          totalApplications: apps?.length || 0,
+          activeLeases: leases?.length || 0,
+          totalPayments: payments?.length || 0,
+          unreadMessages: msgs?.filter(msg => !msg.isRead)?.length || 0
+        });
       } catch (_) {}
       finally {
         setLoading(false);
@@ -57,56 +56,120 @@ export default function UserDashboard() {
     );
   }
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Welcome back, {userName} 👋</h2>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Link key={stat.id} to={stat.link}>
-            <Card className="p-4 hover:shadow-md transition flex items-center gap-3">
-              <div className="text-xl">{stat.icon}</div>
-              <div>
-                <h3 className="text-lg font-semibold">{stat.value}</h3>
-                <p className="text-gray-500 text-sm">{stat.label}</p>
-              </div>
-            </Card>
-          </Link>
-        ))}
-      </div>
-
-      {/* Notifications Preview */}
-      <div>
-        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <FaBell /> Recent Notifications
-          {notifications.filter(n => !n.isRead).length > 0 && (
-            <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
-              {notifications.filter(n => !n.isRead).length} new
-            </span>
-          )}
-        </h3>
-        {notifications.length === 0 ? (
-          <div className="text-sm text-gray-500 dark:text-gray-400">No recent notifications</div>
-        ) : (
-          <ul className="space-y-2">
-            {notifications.slice(0, 5).map((n) => (
-              <li key={n._id || n.id} className="text-sm flex items-start gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <span className={`mt-1 inline-block h-2 w-2 rounded-full flex-shrink-0 ${n.isRead ? "bg-gray-300 dark:bg-gray-600" : "bg-emerald-500"}`}></span>
-                <div className="flex-1">
-                  <p className={`${n.isRead ? "text-gray-600 dark:text-gray-400" : "text-gray-900 dark:text-white font-medium"}`}>{n.message}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-3">
-          <Link to="/user/notifications">
-            <Button size="sm" variant="outline">View all</Button>
-          </Link>
+      {/* Enhanced Welcome Section */}
+      <div className="bg-gradient-to-br from-teal-600 via-teal-500 to-teal-400 rounded-lg p-4 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">
+              {getGreeting()}, {userName}! 👋
+            </h2>
+          </div>
+          <div className="hidden md:block">
+            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+              <span className="text-2xl">🏠</span>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Applications</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalApplications}</p>
+            </div>
+            <div className="p-3 bg-teal-100 dark:bg-teal-900 rounded-full">
+              <FaFileSignature className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+            </div>
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Leases</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.activeLeases}</p>
+            </div>
+            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+              <FaHandshake className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+              <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Unread Messages</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.unreadMessages}</p>
+            </div>
+            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+              <FaComments className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            </div>
+              </div>
+            </Card>
+      </div>
+
+      {/* Recent Notifications */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Notifications</h2>
+          <Link 
+            to="/user/notifications" 
+            className="text-primary hover:underline text-sm font-medium"
+          >
+            View All
+          </Link>
+        </div>
+        <div className="space-y-4">
+          {notifications.length > 0 ? (
+            notifications.slice(0, 3).map((notification) => (
+              <div key={notification._id || notification.id} className={`flex items-center justify-between p-4 rounded-lg transition-all ${
+                notification.isRead 
+                  ? 'bg-gray-50 dark:bg-gray-800' 
+                  : 'bg-white dark:bg-gray-700 border-l-4 border-l-primary'
+              }`}>
+                <div className="flex items-center space-x-3">
+                  <div className={`p-2 rounded-full ${
+                    notification.type === 'application' ? 'bg-teal-100 dark:bg-teal-900' :
+                    notification.type === 'lease' ? 'bg-green-100 dark:bg-green-900' :
+                    notification.type === 'payment' ? 'bg-yellow-100 dark:bg-yellow-900' :
+                    notification.type === 'message' ? 'bg-purple-100 dark:bg-purple-900' :
+                    'bg-gray-100 dark:bg-gray-700'
+                  }`}>
+                    {notification.type === 'application' && <FaFileSignature className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
+                    {notification.type === 'lease' && <FaHandshake className="w-4 h-4 text-green-600 dark:text-green-400" />}
+                    {notification.type === 'payment' && <FaMoneyBillWave className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />}
+                    {notification.type === 'message' && <FaComments className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+                  </div>
+      <div>
+                    <p className="font-medium text-gray-900 dark:text-white">{notification.title || 'Notification'}</p>
+                    <p className="text-sm text-gray-500">{notification.message}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-500">{new Date(notification.createdAt).toLocaleString()}</span>
+                  {!notification.isRead && (
+                    <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No recent notifications</p>
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

@@ -27,12 +27,12 @@ import UserMessages from "./pages/user/UserMessages";
 import UserNotifications from "./pages/user/UserNotifications";
 import UserApplications from "./pages/user/UserApplications";
 import UserProfile from "./pages/user/UserProfile";
-import UserSettings from "./pages/user/UserSettings";
 import PropertyList from "./pages/user/PropertyList";
 import PropertyDetails from "./pages/user/PropertyDetails";
 import UserFavorites from "./pages/user/UserFavorites";
 import UserPayments from "./pages/user/UserPayments";
 import PaymentForm from "./pages/user/PaymentForm";
+import PaymentCallback from "./pages/user/PaymentCallback";
 import UserLeases from "./pages/user/UserLeases";
 import UserReviews from "./pages/user/UserReviews";
 import ContactHistory from "./pages/user/ContactHistory";
@@ -47,7 +47,6 @@ import LandlordApplicants from "./pages/landlord/Applicants";
 import LandlordLeases from "./pages/landlord/Leases";
 import LandlordReviews from "./pages/landlord/Reviews";
 import LandlordTransactions from "./pages/landlord/Transactions";
-import LandlordSettings from "./pages/landlord/Settings";
 import LandlordNotifications from "./pages/landlord/Notifications";
 import LandlordVerification from "./pages/landlord/Verification";
 
@@ -91,6 +90,7 @@ export default function App() {
         <Route path="/confirm-email/:token" element={<ConfirmEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/payment/callback" element={<PaymentCallback />} />
 
         {/* User Routes */}
         <Route
@@ -108,7 +108,6 @@ export default function App() {
           <Route path="notifications" element={<UserNotifications />} />
           <Route path="applications" element={<UserApplications />} />
           <Route path="profile" element={<UserProfile />} />
-          <Route path="settings" element={<UserSettings />} />
           <Route path="properties" element={<PropertyList />} />
           <Route path="properties/:propertyId" element={<PropertyDetails />} />
           <Route path="favorites" element={<UserFavorites />} />
@@ -140,7 +139,6 @@ export default function App() {
           <Route path="reviews" element={<LandlordReviews />} />
           <Route path="transactions" element={<LandlordTransactions />} />
           <Route path="profile" element={<LandlordProfile />} />
-          <Route path="settings" element={<LandlordSettings />} />
           <Route path="notifications" element={<LandlordNotifications />} />
           <Route path="contact-history" element={<ContactHistory />} />
           <Route path="verification" element={<LandlordVerification />} />

@@ -113,7 +113,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white">Email</h3>
-                  <p className="text-gray-600 dark:text-gray-400">support@rentdirect.ng</p>
+                  <p className="text-gray-600 dark:text-gray-400">admin@rentdirect.ng</p>
                   <p className="text-sm text-gray-500">We typically respond within 24 hours</p>
                 </div>
               </div>

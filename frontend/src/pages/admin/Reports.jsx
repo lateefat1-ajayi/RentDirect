@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import { apiFetch } from "../../lib/api";
 import { toast } from "react-toastify";
-import { FaMoneyBillWave, FaChartLine, FaCalendar, FaFilter } from "react-icons/fa";
+import { FaMoneyBillWave, FaChartLine, FaCalendar, FaFilter, FaFlag } from "react-icons/fa";
 
 export default function AdminReports() {
+  const [activeTab, setActiveTab] = useState("financial"); // 'financial' | 'userReports'
   const [payments, setPayments] = useState([]);
   const [allPayments, setAllPayments] = useState([]); // Store all payments for filtering
   const [stats, setStats] = useState({
@@ -18,9 +20,12 @@ export default function AdminReports() {
     period: "all",
     status: "all"
   });
+  const [userReports, setUserReports] = useState([]);
+  const [savingReportId, setSavingReportId] = useState(null);
 
   useEffect(() => {
     fetchReportData();
+    fetchUserReports();
   }, []);
 
   // Apply filters to payments
@@ -98,6 +103,34 @@ export default function AdminReports() {
     }
   };
 
+  const fetchUserReports = async () => {
+    try {
+      const reports = await apiFetch("/reports/admin");
+      setUserReports(Array.isArray(reports) ? reports : []);
+    } catch (error) {
+      console.error("Error fetching user reports:", error);
+      toast.error("Failed to load user reports");
+      setUserReports([]);
+    }
+  };
+
+  const updateReport = async (id, updates) => {
+    try {
+      setSavingReportId(id);
+      const updated = await apiFetch(`/reports/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(updates)
+      });
+      setUserReports((prev) => prev.map((r) => (r._id === id ? updated : r)));
+      toast.success("Report updated");
+    } catch (error) {
+      console.error("Failed to update report:", error);
+      toast.error("Failed to update report");
+    } finally {
+      setSavingReportId(null);
+    }
+  };
+
   const formatCurrency = (amount) => {
     // Convert from kobo to naira (divide by 100)
     const amountInNaira = Number(amount) / 100;
@@ -151,18 +184,46 @@ export default function AdminReports() {
         </div>
       </div>
 
-      {/* Revenue Statistics */}
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab("financial")}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "financial"
+                ? "border-primary text-primary"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
+            }`}
+          >
+            Financial
+          </button>
+          <button
+            onClick={() => setActiveTab("userReports")}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "userReports"
+                ? "border-primary text-primary"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
+            }`}
+          >
+            User Reports
+          </button>
+        </nav>
+      </div>
+
+      {/* Financial Reports */}
+      {activeTab === "financial" && (
+      <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Rev</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {formatCurrency(stats.totalRevenue)}
               </p>
             </div>
-            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-              <FaMoneyBillWave className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-full">
+              <FaMoneyBillWave className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
           </div>
         </Card>
@@ -170,13 +231,13 @@ export default function AdminReports() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Monthly Revenue</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Monthly Rev</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {formatCurrency(stats.monthlyRevenue)}
               </p>
             </div>
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-              <FaChartLine className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
+              <FaChartLine className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
         </Card>
@@ -184,13 +245,13 @@ export default function AdminReports() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Transactions</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Transactions</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats.totalTransactions}
               </p>
             </div>
-            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
-              <FaCalendar className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-full">
+              <FaCalendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
         </Card>
@@ -198,13 +259,13 @@ export default function AdminReports() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Transaction</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Amount</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {formatCurrency(stats.averageTransaction)}
               </p>
             </div>
-            <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-full">
-              <FaMoneyBillWave className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-full">
+              <FaMoneyBillWave className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
             </div>
           </div>
         </Card>
@@ -325,6 +386,91 @@ export default function AdminReports() {
           </div>
         )}
       </Card>
+      </>
+      )}
+
+      {/* User Reports */}
+      {activeTab === "userReports" && (
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <FaFlag className="w-5 h-5 text-red-600" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">User Reports</h2>
+          </div>
+          {userReports.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No reports found</div>
+          ) : (
+            <div className="space-y-3">
+              {userReports.map((r) => (
+                <div key={r._id} className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{r.category || 'Report'}</span>
+                        <span className="text-xs text-gray-500">• {new Date(r.createdAt).toLocaleString()}</span>
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        <strong>From:</strong> {r.reporter?._id ? (
+                          <Link to={`/admin/users?user=${r.reporter._id}`} className="text-primary hover:underline">
+                            {r.reporter?.name || 'User'}
+                          </Link>
+                        ) : (r.reporter?.name || 'User')} ({r.reporterRole})
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        <strong>Against:</strong> {r.targetUserId?._id ? (
+                          <Link to={`/admin/users?user=${r.targetUserId._id}`} className="text-primary hover:underline">
+                            {r.targetUserId?.name || 'User'}
+                          </Link>
+                        ) : (r.targetUserId?.name || 'User')} ({r.targetRole})
+                      </div>
+                      {r.leaseId && (
+                        <div className="text-sm text-gray-600 dark:text-gray-300">
+                          <strong>Lease:</strong> {r.leaseId}
+                        </div>
+                      )}
+                    </div>
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      r.status === 'open' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                      r.status === 'in_review' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                      r.status === 'resolved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                      'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    }`}>
+                      {r.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                    {r.message}
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Status</label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        value={r.status}
+                        onChange={(e) => updateReport(r._id, { status: e.target.value })}
+                        disabled={savingReportId === r._id}
+                      >
+                        <option value="open">Open</option>
+                        <option value="in_review">In Review</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => updateReport(r._id, { status: r.status })}
+                        disabled={savingReportId === r._id}
+                        className="px-4 py-2 rounded-lg bg-primary text-white hover:opacity-90"
+                      >
+                        {savingReportId === r._id ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

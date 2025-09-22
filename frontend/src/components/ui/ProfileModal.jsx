@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Modal from "./Modal";
 import Avatar from "./Avatar";
 import Button from "./Button";
@@ -7,6 +8,7 @@ import { apiFetch } from "../../lib/api";
 import ReviewModal from "./ReviewModal";
 
 export default function ProfileModal({ isOpen, onClose, userId, userRole = "user", currentUserRole = "user", currentUserId = null }) {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -348,10 +350,26 @@ export default function ProfileModal({ isOpen, onClose, userId, userRole = "user
 
                 {/* Send Message Button */}
                 <Button
-                  onClick={() => {
-                    // Open messaging with this user - use role-based routing
-                    const baseRoute = currentUserRole === 'landlord' ? '/landlord' : '/user';
-                    window.open(`${baseRoute}/messages?user=${profile._id}`, "_blank");
+                  onClick={async () => {
+                    try {
+                      // Create or find conversation with this user
+                      const conversation = await apiFetch("/conversations", {
+                        method: "POST",
+                        body: JSON.stringify({ participantIds: [profile._id] })
+                      });
+                      
+                      // Navigate to messages with conversation ID
+                      const baseRoute = currentUserRole === 'landlord' ? '/landlord' : '/user';
+                      navigate(`${baseRoute}/messages`, { 
+                        replace: false, 
+                        state: { conversationId: String(conversation.id) } 
+                      });
+                    } catch (err) {
+                      console.error("Error starting conversation:", err);
+                      // Fallback to simple navigation if conversation creation fails
+                      const baseRoute = currentUserRole === 'landlord' ? '/landlord' : '/user';
+                      navigate(`${baseRoute}/messages?user=${profile._id}`);
+                    }
                   }}
                   variant="outline"
                   size="sm"
