@@ -165,32 +165,43 @@ function PaymentsList({ payments }) {
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       {payments.map((p) => (
-        <Card key={p._id} className="p-6 hover:shadow-lg transition-all duration-200 border-l-4 border-l-teal-500">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/20 rounded-lg flex items-center justify-center">
-                <FaMoneyBillWave className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+        <Card key={p._id} className="p-4 hover:shadow-md transition-all duration-200">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4 flex-1">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <FaMoneyBillWave className="w-5 h-5 text-primary" />
               </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  {p.type || "Rent Payment"}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                  <FaCalendarAlt className="w-3 h-3" />
-                  {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "Date not available"}
-                </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-gray-900 dark:text-white text-base">
+                    {p.type || "Rent Payment"}
+                  </h3>
+                  <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(p.status)}`}>
+                    {getStatusIcon(p.status)}
+                    <span className="capitalize">{p.status}</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                    <FaCalendarAlt className="w-3 h-3 flex-shrink-0" />
+                    <span>{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "Date not available"}</span>
+                  </p>
+                  {p.reference && (
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      Ref: {p.reference}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-lg font-bold text-gray-900 dark:text-white">
+            
+            <div className="text-right flex-shrink-0 ml-4">
+              <p className="text-xl font-bold text-gray-900 dark:text-white">
                 ₦{p.amount?.toLocaleString() || "0"}
               </p>
-              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(p.status)}`}>
-                {getStatusIcon(p.status)}
-                <span className="capitalize">{p.status}</span>
-              </div>
             </div>
           </div>
         </Card>

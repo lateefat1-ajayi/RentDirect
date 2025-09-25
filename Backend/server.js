@@ -26,6 +26,7 @@ import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import shareRoutes from "./routes/shareRoutes.js";
 import { sendEmail } from "./utils/mailer.js";
 
 dotenv.config();
@@ -143,6 +144,7 @@ app.use("/users", userRoutes);
 app.use("/admin", adminRoutes);
 app.use("/contact", contactRoutes);
 app.use("/reports", reportRoutes);
+app.use("/share", shareRoutes);
 
 // Socket authentication middleware
 io.use(async (socket, next) => {

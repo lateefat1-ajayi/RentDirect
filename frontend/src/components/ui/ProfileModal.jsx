@@ -53,6 +53,15 @@ export default function ProfileModal({ isOpen, onClose, userId, userRole = "user
         additionalData.applications = applications;
       }
       
+      // Fetch reviews received for any user
+      try {
+        const reviewsReceived = await apiFetch(`/reviews/user/${userId}`).catch(() => []);
+        additionalData.reviewsReceived = reviewsReceived;
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+        additionalData.reviewsReceived = [];
+      }
+      
       setProfile({ ...userData, ...additionalData });
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -329,6 +338,55 @@ export default function ProfileModal({ isOpen, onClose, userId, userRole = "user
                 )}
               </div>
             )}
+
+            {/* Reviews Section - Show reviews received */}
+            <div className="border-t pt-3">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                <FaStar className="w-3 h-3" />
+                Reviews ({profile.reviewsReceived?.length || 0})
+              </h4>
+              
+              {profile.reviewsReceived && profile.reviewsReceived.length > 0 ? (
+                <div className="space-y-2">
+                  {profile.reviewsReceived.slice(0, 3).map((review) => (
+                    <div key={review._id} className="p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {review.reviewer?.name || "Anonymous"}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {[...Array(5)].map((_, i) => (
+                            <FaStar
+                              key={i}
+                              className={`w-2 h-2 ${
+                                i < review.rating
+                                  ? "text-yellow-400"
+                                  : "text-gray-300 dark:text-gray-600"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-400 text-xs line-clamp-2">
+                        {review.comment}
+                      </p>
+                      <p className="text-gray-500 text-xs mt-1">
+                        {review.property?.title} • {formatDate(review.createdAt)}
+                      </p>
+                    </div>
+                  ))}
+                  {profile.reviewsReceived.length > 3 && (
+                    <p className="text-xs text-gray-500">
+                      +{profile.reviewsReceived.length - 3} more reviews
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  No reviews received yet
+                </p>
+              )}
+            </div>
 
             {/* Action Buttons - Only show when appropriate */}
             {shouldShowActions() && (

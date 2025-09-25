@@ -5,7 +5,7 @@ import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import ProfileModal from "../../components/ui/ProfileModal";
 import Avatar from "../../components/ui/Avatar";
-import { FaUser, FaFileAlt, FaCalendarAlt, FaMapMarkerAlt, FaMoneyBillWave, FaEye, FaCheck, FaTimes, FaStar } from "react-icons/fa";
+import { FaUser, FaFileAlt, FaCalendarAlt, FaMapMarkerAlt, FaMoneyBillWave, FaEye, FaCheck, FaTimes, FaStar, FaHome, FaSync, FaClock } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 export default function LandlordApplicants() {
@@ -16,13 +16,16 @@ export default function LandlordApplicants() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [updating, setUpdating] = useState(null);
+  const [approving, setApproving] = useState(null);
+  const [rejecting, setRejecting] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [propertyFilter, setPropertyFilter] = useState("all");
 
   // Fetch applications
-  useEffect(() => {
-    (async () => {
+  const fetchApplications = async () => {
       try {
+      setLoading(true);
         console.log("Fetching landlord applications...");
         const apps = await apiFetch("/applications/landlord");
         console.log("Raw applications response:", apps);
@@ -35,13 +38,22 @@ export default function LandlordApplicants() {
       } finally {
         setLoading(false);
       }
-    })();
+  };
+
+  useEffect(() => {
+    fetchApplications();
   }, []);
 
   // Update status
   const updateStatus = async (id, status) => {
     try {
-      setUpdating(id);
+      // Set the appropriate loading state
+      if (status === "approved") {
+        setApproving(id);
+      } else if (status === "rejected") {
+        setRejecting(id);
+      }
+      
       console.log(`Updating application ${id} to status: ${status}`);
       
       const updated = await apiFetch(`/applications/${id}`, {
@@ -65,7 +77,12 @@ export default function LandlordApplicants() {
       console.error("Failed to update status", err);
       toast.error(err.message || "Failed to update application status");
     } finally {
-      setUpdating(null);
+      // Clear the appropriate loading state
+      if (status === "approved") {
+        setApproving(null);
+      } else if (status === "rejected") {
+        setRejecting(null);
+      }
     }
   };
 
@@ -106,7 +123,15 @@ export default function LandlordApplicants() {
 
   const groupedApplications = groupApplicationsByProperty(applications);
 
-  // Filter applications based on search and status
+  // Get unique properties for filter dropdown
+  const uniqueProperties = [...new Set(applications.map(app => app.property?._id).filter(Boolean))]
+    .map(propertyId => {
+      const app = applications.find(app => app.property?._id === propertyId);
+      return app?.property;
+    })
+    .filter(Boolean);
+
+  // Filter applications based on search, status, and property
   const filteredApplications = groupedApplications.filter(groupedApp => {
     const matchesSearch = groupedApp.property?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          groupedApp.property?.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -115,10 +140,13 @@ export default function LandlordApplicants() {
                            app.tenant?.email?.toLowerCase().includes(searchTerm.toLowerCase())
                          );
     
-    if (statusFilter === "all") return matchesSearch;
+    const matchesStatus = statusFilter === "all" || 
+                         groupedApp.applications.some(app => app.status === statusFilter);
     
-    const hasMatchingStatus = groupedApp.applications.some(app => app.status === statusFilter);
-    return matchesSearch && hasMatchingStatus;
+    const matchesProperty = propertyFilter === "all" || 
+                           groupedApp.property?._id === propertyFilter;
+    
+    return matchesSearch && matchesStatus && matchesProperty;
   });
 
   const getStatusColor = (status) => {
@@ -165,9 +193,14 @@ export default function LandlordApplicants() {
             Manage and review tenant applications
           </p>
         </div>
+        <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
           <FaUser className="w-4 h-4" />
           <span>{filteredApplications.length} applicant{filteredApplications.length !== 1 ? 's' : ''}</span>
+          </div>
+          <Button onClick={fetchApplications} variant="outline" size="sm" className="p-2" title="Refresh Applications" aria-label="Refresh Applications">
+            <FaSync className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
@@ -177,7 +210,7 @@ export default function LandlordApplicants() {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search by name or email..."
+              placeholder="Search by name, email, or property..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
@@ -194,6 +227,18 @@ export default function LandlordApplicants() {
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
+        </select>
+        <select
+          value={propertyFilter}
+          onChange={(e) => setPropertyFilter(e.target.value)}
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+        >
+          <option value="all">All Properties</option>
+          {uniqueProperties.map(property => (
+            <option key={property._id} value={property._id}>
+              {property.title}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -215,52 +260,48 @@ export default function LandlordApplicants() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredApplications.map((groupedApp) => (
-            <Card key={groupedApp.property?._id} className="p-6 hover:shadow-lg transition-shadow duration-200">
+          {filteredApplications.flatMap(groupedApp => 
+            groupedApp.applications.map(app => (
+              <Card key={app._id} className="p-6 hover:shadow-lg transition-shadow duration-200">
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/20 rounded-lg flex items-center justify-center">
-                    <FaFileAlt className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+                      <FaUser className="w-6 h-6 text-teal-600 dark:text-teal-400" />
                   </div>
                 <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white">
-                      {groupedApp.property?.title}
+                        {app.tenant?.name}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
                       <FaMapMarkerAlt className="w-3 h-3" />
                       {groupedApp.property?.location}
                     </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {groupedApp.totalApplications}
-                  </span>
-                  <FaUser className="w-3 h-3 text-gray-400" />
-                </div>
-              </div>
-
-              {/* Application Details */}
-              <div className="space-y-3 mb-4">
-                {groupedApp.applications.slice(0, 2).map((app, index) => (
-                  <div key={app._id || index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <FaUser className="w-3 h-3 text-gray-400" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {app.tenant?.name}
-              </span>
                     </div>
                     <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(app.status)}`}>
                       {getStatusIcon(app.status)}
                       <span className="capitalize">{app.status}</span>
                     </div>
                   </div>
-                ))}
-                {groupedApp.applications.length > 2 && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                    +{groupedApp.applications.length - 2} more application{groupedApp.applications.length - 2 !== 1 ? 's' : ''}
-                  </p>
+
+                {/* Property Info */}
+                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FaHome className="w-4 h-4 text-blue-600" />
+                    <span className="font-medium text-gray-900 dark:text-white text-sm">
+                      {groupedApp.property?.title}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <FaCalendarAlt className="w-3 h-3" />
+                    <span>Applied: {new Date(app.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  {app.leaseDuration && (
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <FaClock className="w-3 h-3" />
+                      <span>Duration: {app.leaseDuration} year{app.leaseDuration > 1 ? 's' : ''}</span>
+                    </div>
                 )}
               </div>
 
@@ -269,7 +310,7 @@ export default function LandlordApplicants() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setSelected(groupedApp.latestApplication)}
+                    onClick={() => setSelected(app)}
                   className="flex-1 min-w-[120px] flex items-center justify-center gap-2 whitespace-nowrap"
                 >
                   <FaEye className="w-4 h-4" />
@@ -278,7 +319,7 @@ export default function LandlordApplicants() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => viewProfile(groupedApp.applications[0]?.tenant)}
+                    onClick={() => viewProfile(app.tenant)}
                   className="flex-1 min-w-[120px] flex items-center justify-center gap-2 whitespace-nowrap"
                 >
                   <FaUser className="w-4 h-4" />
@@ -286,90 +327,214 @@ export default function LandlordApplicants() {
                 </Button>
               </div>
             </Card>
-          ))}
+            ))
+          )}
         </div>
       )}
 
-      {/* Modal for Details */}
-      {selected && (() => {
-        const tenantApplications = applications.filter(app => app.tenant?._id === selected.tenant?._id);
-        return (
+      {/* Application Details Modal */}
+      {selected && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-4xl relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Application Details</h2>
               <button
                 onClick={() => setSelected(null)}
-                className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 ✕
               </button>
-
-              <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-                All Applications - {selected.property?.title}
-              </h2>
+            </div>
 
               <div className="space-y-4">
-                {applications.filter(app => app.property?._id === selected.property?._id).map((app, index) => (
-                  <div key={app._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
-                    {/* Header */}
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        Application #{index + 1} - {app.tenant?.name}
+              {/* Property Information */}
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                  <FaHome className="text-blue-600" />
+                  Property Information
                       </h3>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium capitalize
-                        ${app.status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200" :
-                          app.status === "pending" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200" :
-                          "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200"}`}>
-                        {app.status}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Property:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.property?.title || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Location:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.property?.location || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Rent:</span>
+                    <p className="text-gray-900 dark:text-white">
+                      {selected.property?.price ? `₦${selected.property.price.toLocaleString()}/year` : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Status:</span>
+                    <div className="mt-1">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        selected.status === "approved" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" :
+                        selected.status === "pending" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" :
+                        "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                      }`}>
+                        {selected.status === "approved" && <FaCheck className="mr-1" />}
+                        {selected.status === "pending" && <FaCalendarAlt className="mr-1" />}
+                        {selected.status === "rejected" && <FaTimes className="mr-1" />}
+                        {selected.status}
                       </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tenant Information */}
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                  <FaUser className="text-purple-600" />
+                  Tenant Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Name:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.tenant?.name || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Email:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.tenant?.email || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Phone:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.applicant?.phone || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Date of Birth:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.applicant?.dob ? new Date(selected.applicant.dob).toLocaleDateString() : "N/A"}</p>
+                  </div>
+                </div>
                     </div>
                     
                     {/* Application Details */}
-                    <div className="space-y-3 text-sm">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                        <p><strong className="text-gray-700 dark:text-gray-300">Property:</strong> {app.property?.title}</p>
-                        <p><strong className="text-gray-700 dark:text-gray-300">Location:</strong> {app.property?.location}</p>
-                        <p><strong className="text-gray-700 dark:text-gray-300">Move-in Date:</strong> {app.moveInDate ? new Date(app.moveInDate).toLocaleDateString() : "—"}</p>
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                  <FaFileAlt className="text-green-600" />
+                  Application Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Applied Date:</span>
+                    <p className="text-gray-900 dark:text-white">{new Date(selected.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Move-in Date:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.moveInDate ? new Date(selected.moveInDate).toLocaleDateString() : "Not specified"}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Lease Duration:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.leaseDuration ? `${selected.leaseDuration} year${selected.leaseDuration > 1 ? 's' : ''}` : "Not specified"}</p>
                       </div>
-                        <div className="space-y-2">
-                        <p><strong className="text-gray-700 dark:text-gray-300">Employment:</strong> {app.employment?.jobTitle} @ {app.employment?.employerName}</p>
-                        <p><strong className="text-gray-700 dark:text-gray-300">Income:</strong> ₦{app.employment?.monthlyIncome?.toLocaleString()}</p>
-                        <p><strong className="text-gray-700 dark:text-gray-300">Applied:</strong> {new Date(app.createdAt).toLocaleDateString()}</p>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Application ID:</span>
+                    <p className="text-gray-900 dark:text-white font-mono text-xs">{selected._id}</p>
                         </div>
                       </div>
                     </div>
 
+              {/* Employment Information */}
+              {selected.employment && (
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                    <FaMoneyBillWave className="text-orange-600" />
+                    Employment Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Job Title:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.employment.jobTitle || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Employer:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.employment.employerName || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Monthly Income:</span>
+                      <p className="text-gray-900 dark:text-white">₦{selected.employment.monthlyIncome?.toLocaleString() || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Employer Phone:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.employment.employerPhone || "Not provided"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Rental History */}
+              {selected.rentalHistory && (
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                    <FaCalendarAlt className="text-indigo-600" />
+                    Rental History
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Previous Address:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.rentalHistory.previousAddress || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Previous Landlord:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.rentalHistory.previousLandlord || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Duration:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.rentalHistory.previousDuration || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Reason for Leaving:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.rentalHistory.reasonForLeaving || "Not provided"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Message */}
+              {selected.message && (
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Message from Tenant</h3>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{selected.message}</p>
+                </div>
+              )}
+
                     {/* Action Buttons */}
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      {app.status === "pending" && (
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Actions</h3>
+                <div className="flex flex-wrap gap-2">
+                  {selected.status === "pending" && (
                         <>
                           <Button
                             variant="primary"
                             size="md"
-                            onClick={() => updateStatus(app._id, "approved")}
-                            disabled={updating === app._id}
+                        onClick={() => updateStatus(selected._id, "approved")}
+                        disabled={approving === selected._id || rejecting === selected._id}
                             className="flex-1 min-w-[120px]"
                           >
-                            {updating === app._id ? "Processing..." : "✓ Approve"}
+                        {approving === selected._id ? "Processing..." : "✓ Approve"}
                           </Button>
                           <Button
                             variant="danger"
                             size="md"
-                            onClick={() => updateStatus(app._id, "rejected")}
-                            disabled={updating === app._id}
+                        onClick={() => updateStatus(selected._id, "rejected")}
+                        disabled={approving === selected._id || rejecting === selected._id}
                             className="flex-1 min-w-[120px]"
                           >
-                            {updating === app._id ? "Processing..." : "✗ Reject"}
+                        {rejecting === selected._id ? "Processing..." : "✗ Reject"}
                           </Button>
                         </>
                       )}
-                      {app.status === "approved" && (
+                  {selected.status === "approved" && (
                         <div className="flex items-center gap-2 text-green-600 dark:text-green-400 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
                           <FaCheck className="w-4 h-4" />
                           <span className="text-sm font-medium">Application Approved</span>
                         </div>
                       )}
-                      {app.status === "rejected" && (
+                  {selected.status === "rejected" && (
                         <div className="flex items-center gap-2 text-red-600 dark:text-red-400 px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
                           <FaTimes className="w-4 h-4" />
                           <span className="text-sm font-medium">Application Rejected</span>
@@ -377,7 +542,6 @@ export default function LandlordApplicants() {
                       )}
                     </div>
                   </div>
-                ))}
               </div>
 
               <div className="mt-6 flex justify-end">
@@ -387,8 +551,7 @@ export default function LandlordApplicants() {
               </div>
             </div>
           </div>
-        );
-      })()}
+      )}
 
       {/* Profile Modal */}
       <ProfileModal

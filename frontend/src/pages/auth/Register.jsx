@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Input from "../../components/ui/Input";
 import PasswordInput from "../../components/ui/PasswordInput";
 import Button from "../../components/ui/Button";
@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FaShieldAlt, FaHandshake, FaHome, FaUsers, FaCheckCircle } from "react-icons/fa";
 import HeroImage from "../../assets/HeroImage.jpg";
+import { apiFetch } from "../../lib/api.js";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -19,6 +20,25 @@ export default function Register() {
   const [role, setRole] = useState("tenant");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Track registration from share
+  useEffect(() => {
+    const trackShareRegistration = async () => {
+      const shareToken = localStorage.getItem('pendingShareToken');
+      if (shareToken) {
+        try {
+          await apiFetch('/share/track-registration', {
+            method: 'POST',
+            body: JSON.stringify({ shareToken })
+          });
+        } catch (error) {
+          console.error('Error tracking share registration:', error);
+        }
+      }
+    };
+
+    trackShareRegistration();
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -51,20 +71,27 @@ export default function Register() {
       setLoading(true);
 
       const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      console.log("Registering user with data:", { ...form, role });
+      
       const { data } = await axios.post(
         `${apiBase}/auth/register`,
         { ...form, role }
       );
 
-      // Inform user to confirm email
-      toast.success("Registration successful! Please check your email to confirm ");
+      console.log("Registration response:", data);
 
-      console.log("Registered user:", data);
+      // Inform user to verify email
+      toast.success("Registration successful! Please check your email for the verification code");
 
-      // Optional: redirect to login page instead of auto-login
-      navigate("/auth/login");
+      // Store email for verification page
+      localStorage.setItem("pendingEmail", form.email);
+
+      // Redirect to verification page
+      navigate("/auth/verify-code", { state: { email: form.email } });
     } catch (err) {
-      toast.error(err.response?.data?.message || "Registration failed ");
+      console.error("Registration error:", err);
+      console.error("Error response:", err.response?.data);
+      toast.error(err.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
     }

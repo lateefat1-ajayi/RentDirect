@@ -99,7 +99,7 @@ export default function PaymentForm() {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Rent Amount:</span>
-            <span className="font-medium text-lg">₦{lease.rentAmount.toLocaleString()}/month</span>
+            <span className="font-medium text-lg">₦{lease.rentAmount.toLocaleString()}/year</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Lease Period:</span>

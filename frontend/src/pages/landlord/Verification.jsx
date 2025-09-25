@@ -5,7 +5,7 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import { apiFetch, apiUpload } from "../../lib/api";
 import { toast } from "react-toastify";
-import { FaUpload, FaFileAlt, FaCheckCircle, FaClock, FaTimesCircle } from "react-icons/fa";
+import { FaUpload, FaFileAlt, FaCheckCircle, FaClock, FaTimesCircle, FaSync } from "react-icons/fa";
 
 export default function LandlordVerification() {
   const navigate = useNavigate();
@@ -27,11 +27,18 @@ export default function LandlordVerification() {
   });
   const [loading, setLoading] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
+  const [verificationStatus, setVerificationStatus] = useState(null);
 
   useEffect(() => {
     fetchUserProfile();
-    loadSavedFormData();
   }, []);
+
+  // Load saved form data after user profile is loaded
+  useEffect(() => {
+    if (userProfile) {
+      loadSavedFormData();
+    }
+  }, [userProfile]);
 
   // Save form data to localStorage whenever it changes
   useEffect(() => {
@@ -80,22 +87,53 @@ export default function LandlordVerification() {
     };
   }, [documents]);
 
-  const fetchUserProfile = async (showLoading = true) => {
+  const fetchUserProfile = async (showLoading = true, forceRefresh = false) => {
     try {
       if (showLoading) setLoading(true);
       
       // First try to get from localStorage for immediate display
       const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      const storedVerificationStatus = localStorage.getItem("verificationStatus");
+      
       if (userData && Object.keys(userData).length > 0) {
         setUserProfile(userData);
+        
+        // Use stored verification status if available
+        if (storedVerificationStatus) {
+          setVerificationStatus(storedVerificationStatus);
+        }
+        
+        // If we have verification status and not forcing refresh, don't fetch from backend
+        if (storedVerificationStatus && !forceRefresh) {
+          if (showLoading) setLoading(false);
+          return;
+        }
       }
       
-      // Then fetch fresh data from backend
+      // Only fetch fresh data from backend if needed
       try {
         const freshProfile = await apiFetch("/users/profile");
-        setUserProfile(freshProfile);
-        // Update localStorage with fresh data
-        localStorage.setItem("user", JSON.stringify(freshProfile));
+        
+        // Only update verification status if it has actually changed
+        if (!storedVerificationStatus || storedVerificationStatus !== freshProfile.verificationStatus) {
+          setUserProfile(freshProfile);
+          setVerificationStatus(freshProfile.verificationStatus);
+          localStorage.setItem("user", JSON.stringify(freshProfile));
+          localStorage.setItem("verificationStatus", freshProfile.verificationStatus);
+          
+          // Show toast if status changed
+          if (storedVerificationStatus && storedVerificationStatus !== freshProfile.verificationStatus) {
+            if (freshProfile.verificationStatus === "approved") {
+              toast.success("Your verification has been approved!");
+            } else if (freshProfile.verificationStatus === "rejected") {
+              toast.error("Your verification was rejected. Please check the requirements and resubmit.");
+            }
+          }
+        } else {
+          // Just update the profile without changing verification status
+          setUserProfile(freshProfile);
+          localStorage.setItem("user", JSON.stringify(freshProfile));
+        }
       } catch (error) {
         console.error("Error fetching fresh profile:", error);
         // If backend fetch fails, keep using localStorage data
@@ -122,6 +160,15 @@ export default function LandlordVerification() {
       }
     } catch (error) {
       console.error("Error loading saved form data:", error);
+    }
+    
+    // Pre-fill user information from profile
+    if (userProfile) {
+      setVerificationData(prev => ({
+        ...prev,
+        phoneNumber: userProfile.phone || prev.phoneNumber,
+        businessName: userProfile.name || prev.businessName
+      }));
     }
   };
 
@@ -305,111 +352,138 @@ export default function LandlordVerification() {
     }
   };
 
-  if (userProfile?.verificationStatus === "approved") {
+  if (verificationStatus === "approved") {
     return (
       <div className="p-6">
-        <Card className="p-8 text-center">
-          <FaCheckCircle className="text-green-500 text-6xl mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Verification Complete!
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Your account has been verified. You can now list properties on our platform.
-          </p>
-          <div className="space-y-3">
-            <Button onClick={() => navigate("/landlord/listings")}>
-              Start Listing Properties
-            </Button>
-            <Button 
-              onClick={() => fetchUserProfile(false)}
-              variant="outline"
-              className="px-6"
-            >
-              Refresh Status
-            </Button>
-          </div>
-        </Card>
+        <div className="max-w-2xl mx-auto">
+          <Card className="p-8 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full mb-6">
+                <FaCheckCircle className="text-green-600 dark:text-green-400 text-4xl" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                Verification Complete!
+              </h1>
+              <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
+                Your account has been verified. You can now list properties on our platform.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  onClick={() => navigate("/landlord/listings")}
+                  className="px-8 py-3 text-lg"
+                >
+                  Start Listing Properties
+                </Button>
+                <Button 
+                  onClick={() => fetchUserProfile(false, true)}
+                  variant="outline"
+                  className="px-4 py-3 flex items-center gap-2"
+                  title="Refresh Status"
+                  aria-label="Refresh Status"
+                >
+                  <FaSync className="w-4 h-4" />
+                  Refresh Status
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
     );
   }
 
-  if (userProfile?.verificationStatus === "pending") {
+  if (verificationStatus === "pending") {
     return (
       <div className="p-6">
-        <Card className="p-8 text-center">
-          <FaClock className="text-yellow-500 text-6xl mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Verification Pending
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Your verification request is being reviewed by our admin team. 
-            You'll be notified once the review is complete.
-          </p>
-          {userProfile?.verificationNote && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Note:</strong> {userProfile.verificationNote}
+        <div className="max-w-2xl mx-auto">
+          <Card className="p-8 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-yellow-200 dark:border-yellow-800">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-full mb-6">
+                <FaClock className="text-yellow-600 dark:text-yellow-400 text-4xl" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                Verification Pending
+              </h1>
+              <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
+                Your verification request is being reviewed by our admin team. 
+                You'll be notified once the review is complete.
               </p>
+              {userProfile?.verificationNote && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>Note:</strong> {userProfile.verificationNote}
+                  </p>
+                </div>
+              )}
+              <div className="flex justify-center">
+                <Button 
+                  onClick={() => fetchUserProfile(false, true)}
+                  variant="outline"
+                  className="px-6 py-3 flex items-center gap-2"
+                  title="Refresh Status"
+                  aria-label="Refresh Status"
+                >
+                  <FaSync className="w-4 h-4" />
+                  Refresh Status
+                </Button>
+              </div>
             </div>
-          )}
-          <div className="mt-6">
-            <Button 
-              onClick={fetchUserProfile}
-              variant="outline"
-              className="px-6"
-            >
-              Refresh Status
-            </Button>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
     );
   }
 
-  if (userProfile?.verificationStatus === "rejected") {
+  if (verificationStatus === "rejected") {
     return (
       <div className="p-6">
-        <Card className="p-8 text-center">
-          <FaTimesCircle className="text-red-500 text-6xl mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Verification Rejected
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Your verification request was not approved. Please review the feedback below and resubmit with corrected information.
-          </p>
-          {userProfile?.verificationNote && (
-            <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
-              <p className="text-sm text-red-800 dark:text-red-200">
-                <strong>Rejection Reason:</strong> {userProfile.verificationNote}
+        <div className="max-w-2xl mx-auto">
+          <Card className="p-8 bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 border-red-200 dark:border-red-800">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full mb-6">
+                <FaTimesCircle className="text-red-600 dark:text-red-400 text-4xl" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                Verification Rejected
+              </h1>
+              <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
+                Your verification request was not approved. Please review the feedback below and resubmit with corrected information.
               </p>
+              {userProfile?.verificationNote && (
+                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800 mb-6">
+                  <p className="text-sm text-red-800 dark:text-red-200">
+                    <strong>Rejection Reason:</strong> {userProfile.verificationNote}
+                  </p>
+                </div>
+              )}
+              <div className="space-y-4">
+                <Button 
+                  onClick={() => {
+                    // Clear the rejected status to allow resubmission
+                    const updatedProfile = { ...userProfile, verificationStatus: null };
+                    localStorage.setItem("user", JSON.stringify(updatedProfile));
+                    setUserProfile(updatedProfile);
+                    // Clear any saved form data to start fresh
+                    localStorage.removeItem('landlordVerificationForm');
+                    // Cleanup any existing object URLs
+                    Object.values(imageUrls).forEach(url => {
+                      if (url) URL.revokeObjectURL(url);
+                    });
+                    setImageUrls({});
+                    toast.success("You can now resubmit your verification request");
+                  }}
+                  variant="primary"
+                  className="px-8 py-3 text-lg"
+                >
+                  Resubmit Verification
+                </Button>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Click the button above to start a new verification request
+                </p>
+              </div>
             </div>
-          )}
-          <div className="mt-6 space-y-3">
-            <Button 
-              onClick={() => {
-                // Clear the rejected status to allow resubmission
-                const updatedProfile = { ...userProfile, verificationStatus: null };
-                localStorage.setItem("user", JSON.stringify(updatedProfile));
-                setUserProfile(updatedProfile);
-                // Clear any saved form data to start fresh
-                localStorage.removeItem('landlordVerificationForm');
-                // Cleanup any existing object URLs
-                Object.values(imageUrls).forEach(url => {
-                  if (url) URL.revokeObjectURL(url);
-                });
-                setImageUrls({});
-                toast.success("You can now resubmit your verification request");
-              }}
-              variant="primary"
-              className="px-6"
-            >
-              Resubmit Verification
-            </Button>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Click the button above to start a new verification request
-            </p>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
     );
   }

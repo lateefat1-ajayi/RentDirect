@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import { FaMoneyBillWave, FaCalendarAlt, FaUser, FaHome, FaCheckCircle, FaClock, FaTimesCircle, FaReceipt } from "react-icons/fa";
+import { FaMoneyBillWave, FaCalendarAlt, FaUser, FaHome, FaCheckCircle, FaClock, FaTimesCircle, FaReceipt, FaSync, FaDownload } from "react-icons/fa";
 import { apiFetch } from "../../lib/api";
 import { toast } from "react-toastify";
 
@@ -90,6 +90,32 @@ export default function LandlordTransactions() {
     }
   };
 
+  const downloadReceipt = async (paymentId, reference) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/payments/${paymentId}/receipt`, { 
+        headers: token ? { Authorization: `Bearer ${token}` } : {} 
+      });
+      
+      if (!res.ok) throw new Error('Download failed');
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipt-${reference || paymentId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Receipt downloaded successfully");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to download receipt");
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -109,8 +135,8 @@ export default function LandlordTransactions() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Transactions</h1>
-        <Button onClick={fetchTransactions} variant="outline">
-          Refresh
+        <Button onClick={fetchTransactions} variant="outline" size="sm" className="p-2" title="Refresh Transactions" aria-label="Refresh Transactions">
+          <FaSync className="w-4 h-4" />
         </Button>
       </div>
 
@@ -177,12 +203,26 @@ export default function LandlordTransactions() {
               <Card key={transaction._id} className="p-6">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <FaMoneyBillWave className="text-blue-600 text-xl" />
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {transaction.property?.title || "Property Title"}
-                      </h3>
-                      {getStatusBadge(transaction.status)}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FaMoneyBillWave className="text-blue-600 text-xl" />
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {transaction.property?.title || "Property Title"}
+                        </h3>
+                        {getStatusBadge(transaction.status)}
+                      </div>
+                      {transaction.status === "success" && (
+                        <Button
+                          onClick={() => downloadReceipt(transaction._id, transaction.reference)}
+                          variant="outline"
+                          size="sm"
+                          className="p-2"
+                          title="Download Receipt"
+                          aria-label="Download Receipt"
+                        >
+                          <FaDownload className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">

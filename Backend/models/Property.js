@@ -12,7 +12,17 @@ const propertySchema = new mongoose.Schema(
     },
     price: {
       type: Number,
-      required: [true, "Price is required"],
+      required: [true, "Yearly rent price is required"],
+    },
+    availableDurations: {
+      type: [Number],
+      default: [1, 2, 3], // Available lease durations in years
+      validate: {
+        validator: function(v) {
+          return v.every(duration => duration >= 1 && duration <= 10);
+        },
+        message: 'Duration must be between 1 and 10 years'
+      }
     },
     location: {
       type: String,

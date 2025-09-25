@@ -21,15 +21,22 @@ export default function PropertyDetails() {
 
   // If property not passed, fetch real property by id
   useEffect(() => {
-    if (state?.property) return;
+    if (state?.property) {
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
+        setLoading(true);
         const data = await apiFetch(`/property/${propertyId}`);
         console.log("Fetched property data:", data);
         console.log("Landlord info:", data?.landlord);
         setProperty(data);
       } catch (err) {
         console.error("Failed to load property:", err.message);
+        setProperty(null);
+      } finally {
+        setLoading(false);
       }
     })();
   }, [state?.property, propertyId]);
@@ -42,6 +49,11 @@ export default function PropertyDetails() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const sigCanvasRef = useRef(null);
+  const sigIsDrawingRef = useRef(false);
+  const sigFileInputRef = useRef(null);
+  const [sigHasDrawn, setSigHasDrawn] = useState(false);
   const [applyForm, setApplyForm] = useState({
     // 1) Applicant Information
     fullName: "",
@@ -67,11 +79,6 @@ export default function PropertyDetails() {
     occupantsCount: "",
     hasPets: "no",
 
-    // 5) References
-    referenceName: "",
-    referenceRelationship: "",
-    referencePhone: "",
-    referenceEmail: "",
 
     // 6) Consent & Declaration
     agreeChecks: false,
@@ -80,12 +87,25 @@ export default function PropertyDetails() {
     // Other
     moveInDate: "",
     message: "",
+    leaseDuration: "", // Selected lease duration in years
   });
 
   useEffect(() => {
     if (!property) return;
     checkFavoriteStatus();
   }, [property]);
+
+  // Pre-fill application form with user data
+  useEffect(() => {
+    if (profile) {
+      setApplyForm(prev => ({
+        ...prev,
+        fullName: profile.name || prev.fullName,
+        email: profile.email || prev.email,
+        phone: profile.phone || prev.phone
+      }));
+    }
+  }, [profile]);
 
   const checkFavoriteStatus = async () => {
     try {
@@ -170,7 +190,12 @@ export default function PropertyDetails() {
 
   const handleApplySubmit = async (e) => {
     e.preventDefault();
-    if (!property) return;
+    console.log("Form submitted", { property, applyForm });
+    if (!property) {
+      console.error("No property found");
+      toast.error("Property not found");
+      return;
+    }
     setApplying(true);
     try {
       // Require a real database property (_id) to apply
@@ -207,18 +232,13 @@ export default function PropertyDetails() {
             count: applyForm.occupantsCount,
             hasPets: applyForm.hasPets === "yes",
           },
-          reference: {
-            name: applyForm.referenceName,
-            relationship: applyForm.referenceRelationship,
-            phone: applyForm.referencePhone,
-            email: applyForm.referenceEmail,
-          },
           consent: {
             agreeChecks: applyForm.agreeChecks,
             signature: applyForm.signature,
           },
           moveInDate: applyForm.moveInDate,
           message: applyForm.message,
+          leaseDuration: parseInt(applyForm.leaseDuration),
         }),
       });
       toast.success("Application submitted!");
@@ -240,14 +260,11 @@ export default function PropertyDetails() {
         reasonForLeaving: "",
         occupantsCount: "",
         hasPets: "no",
-        referenceName: "",
-        referenceRelationship: "",
-        referencePhone: "",
-        referenceEmail: "",
         agreeChecks: false,
         signature: "",
         moveInDate: "",
         message: "",
+        leaseDuration: "",
       });
     } catch (err) {
       const msg = err.message || "Failed to submit application";
@@ -260,6 +277,18 @@ export default function PropertyDetails() {
       setApplying(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   if (!property) return <p className="p-6 text-sm text-gray-500">Property not found.</p>;
 
@@ -311,6 +340,18 @@ export default function PropertyDetails() {
             <div className="text-right">
               <p className="text-2xl font-bold text-teal-600">₦{property.price?.toLocaleString()}</p>
               <p className="text-sm text-gray-500">per year</p>
+              {property.availableDurations && property.availableDurations.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500">Available durations:</p>
+                  <div className="flex gap-1 flex-wrap justify-end">
+                    {property.availableDurations.map((year) => (
+                      <span key={year} className="text-xs bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 px-2 py-1 rounded">
+                        {year}Y
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -324,10 +365,12 @@ export default function PropertyDetails() {
               <FaBath className="w-4 h-4" />
               <span>{property.bathrooms} Bathrooms</span>
             </div>
-            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-              <FaRulerCombined className="w-4 h-4" />
-              <span>{property.area}</span>
-            </div>
+            {property.size && (
+              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                <FaRulerCombined className="w-4 h-4" />
+                <span>{property.size} sq ft</span>
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -394,7 +437,10 @@ export default function PropertyDetails() {
               <Button 
                 variant="primary" 
                 size="md"
-                onClick={() => setShowApply(true)}
+                onClick={() => {
+                  console.log("Apply Now clicked", { property, showApply });
+                  setShowApply(true);
+                }}
                 className="flex items-center gap-2"
               >
                 Apply Now
@@ -425,7 +471,7 @@ export default function PropertyDetails() {
       {showApply && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50">
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-5">
-            <h2 className="text-lg font-semibold mb-3">Apply for {property.title}</h2>
+            <h2 className="text-lg font-semibold mb-3">Apply for {property?.title || 'Property'}</h2>
             <form onSubmit={handleApplySubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
               {/* 1. Applicant Information */}
               <div>
@@ -534,26 +580,26 @@ export default function PropertyDetails() {
                 <div className="grid grid-cols-1 gap-3">
                   <div>
                     <label className="block text-sm mb-1">Current/Previous Address</label>
-                    <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.previousAddress} onChange={(e) => setApplyForm({ ...applyForm, previousAddress: e.target.value })} />
+                    <input type="text" className="w-full rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value={applyForm.previousAddress} onChange={(e) => setApplyForm({ ...applyForm, previousAddress: e.target.value })} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm mb-1">Landlord/Manager Name</label>
-                      <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.previousLandlord} onChange={(e) => setApplyForm({ ...applyForm, previousLandlord: e.target.value })} />
+                      <input type="text" className="w-full rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value={applyForm.previousLandlord} onChange={(e) => setApplyForm({ ...applyForm, previousLandlord: e.target.value })} />
                     </div>
                     <div>
                       <label className="block text-sm mb-1">Landlord Contact</label>
-                      <input type="tel" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.previousLandlordPhone} onChange={(e) => setApplyForm({ ...applyForm, previousLandlordPhone: e.target.value })} />
+                      <input type="tel" className="w-full rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value={applyForm.previousLandlordPhone} onChange={(e) => setApplyForm({ ...applyForm, previousLandlordPhone: e.target.value })} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm mb-1">Duration at Residence</label>
-                      <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" placeholder="e.g., 2 years" value={applyForm.previousDuration} onChange={(e) => setApplyForm({ ...applyForm, previousDuration: e.target.value })} />
+                      <input type="text" className="w-full rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="e.g., 2 years" value={applyForm.previousDuration} onChange={(e) => setApplyForm({ ...applyForm, previousDuration: e.target.value })} />
                     </div>
                     <div>
                       <label className="block text-sm mb-1">Reason for Leaving</label>
-                      <input type="text" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.reasonForLeaving} onChange={(e) => setApplyForm({ ...applyForm, reasonForLeaving: e.target.value })} />
+                      <input type="text" className="w-full rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value={applyForm.reasonForLeaving} onChange={(e) => setApplyForm({ ...applyForm, reasonForLeaving: e.target.value })} />
                     </div>
                   </div>
                 </div>
@@ -565,7 +611,7 @@ export default function PropertyDetails() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm mb-1">Number of Occupants</label>
-                    <input type="number" min="1" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.occupantsCount} onChange={(e) => setApplyForm({ ...applyForm, occupantsCount: e.target.value })} />
+                    <input type="number" min="1" className="w-full rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value={applyForm.occupantsCount} onChange={(e) => setApplyForm({ ...applyForm, occupantsCount: e.target.value })} />
                   </div>
                   <div>
                     <label className="block text-sm mb-1">Any Pets?</label>
@@ -577,54 +623,8 @@ export default function PropertyDetails() {
                 </div>
               </div>
 
-              {/* 5. References */}
-              <div>
-                <h3 className="font-semibold text-sm mb-2">References</h3>
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm mb-1">Reference Name *</label>
-                      <Input 
-                        type="text" 
-                        value={applyForm.referenceName} 
-                        onChange={(e) => setApplyForm({ ...applyForm, referenceName: e.target.value })} 
-                        required 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm mb-1">Relationship *</label>
-                      <Input 
-                        type="text" 
-                        value={applyForm.referenceRelationship} 
-                        onChange={(e) => setApplyForm({ ...applyForm, referenceRelationship: e.target.value })} 
-                        required 
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm mb-1">Reference Phone *</label>
-                      <Input 
-                        type="tel" 
-                        value={applyForm.referencePhone} 
-                        onChange={(e) => setApplyForm({ ...applyForm, referencePhone: e.target.value })} 
-                        required 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm mb-1">Reference Email *</label>
-                      <Input 
-                        type="email" 
-                        value={applyForm.referenceEmail} 
-                        onChange={(e) => setApplyForm({ ...applyForm, referenceEmail: e.target.value })} 
-                        required 
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              {/* 6. Consent & Declaration */}
+              {/* 5. Consent & Declaration */}
               <div>
                 <h3 className="font-semibold text-sm mb-2">Consent & Declaration</h3>
                 <div className="space-y-3">
@@ -663,12 +663,31 @@ export default function PropertyDetails() {
                 <h3 className="font-semibold text-sm mb-2">Additional Details</h3>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
+                    <label className="block text-sm mb-1">Lease Duration *</label>
+                    <select 
+                      className="w-full rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                      value={applyForm.leaseDuration} 
+                      onChange={(e) => setApplyForm({ ...applyForm, leaseDuration: e.target.value })}
+                      required
+                    >
+                      <option value="">Select duration</option>
+                      {property?.availableDurations?.map((year) => (
+                        <option key={year} value={year}>
+                          {year} Year{year > 1 ? 's' : ''} - ₦{(property?.price * year)?.toLocaleString()}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="text-xs text-gray-500 mt-1">
+                      💡 Total rent calculated: Yearly rent × {applyForm.leaseDuration || 'X'} years
+                    </div>
+                  </div>
+                  <div>
                     <label className="block text-sm mb-1">Desired Move-in Date</label>
-                    <input type="date" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.moveInDate} onChange={(e) => setApplyForm({ ...applyForm, moveInDate: e.target.value })} />
+                    <input type="date" className="w-full rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value={applyForm.moveInDate} onChange={(e) => setApplyForm({ ...applyForm, moveInDate: e.target.value })} />
                   </div>
                   <div>
                     <label className="block text-sm mb-1">Message to Landlord (optional)</label>
-                    <textarea rows="3" className="w-full rounded border px-3 py-2 bg-transparent" value={applyForm.message} onChange={(e) => setApplyForm({ ...applyForm, message: e.target.value })} />
+                    <textarea rows="3" className="w-full rounded border border-gray-300 dark:border-gray-600 px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value={applyForm.message} onChange={(e) => setApplyForm({ ...applyForm, message: e.target.value })} />
                   </div>
                 </div>
               </div>

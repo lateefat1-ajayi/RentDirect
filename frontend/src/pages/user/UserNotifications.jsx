@@ -1,12 +1,27 @@
 import { Link } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import { FaBell, FaCheck, FaCheckDouble } from "react-icons/fa";
+import { FaBell, FaCheck, FaCheckDouble, FaFileSignature, FaHandshake, FaMoneyBillWave, FaComments } from "react-icons/fa";
 import { useNotifications } from "../../context/NotificationsContext";
 import { toast } from "react-toastify";
 
 export default function UserNotifications() {
   const { notifications, markAsRead, markAllAsRead, loading, unreadCount } = useNotifications();
+
+  const getNotificationBadge = (type) => {
+    switch (type) {
+      case "application":
+        return <span className="px-1.5 py-0.5 text-xs bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 rounded-full">Application</span>;
+      case "lease":
+        return <span className="px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full">Lease</span>;
+      case "payment":
+        return <span className="px-1.5 py-0.5 text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-full">Payment</span>;
+      case "message":
+        return <span className="px-1.5 py-0.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full">Message</span>;
+      default:
+        return null;
+    }
+  };
 
   const handleMarkAsRead = async (id) => {
     try {
@@ -80,43 +95,52 @@ export default function UserNotifications() {
           {notifications.map((n) => (
             <div
               key={n._id || n.id}
-              className={`group relative p-4 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer
-                ${n.isRead 
-                  ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700" 
-                  : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 border-l-4 border-l-primary"
-                }`}
+              className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-all ${
+                n.isRead 
+                  ? 'bg-gray-50 dark:bg-gray-800' 
+                  : 'bg-white dark:bg-gray-700 border-l-4 border-l-primary'
+              }`}
             >
-              <div className="flex items-start gap-3">
-                {/* Status indicator */}
-                <div className="flex-shrink-0 mt-1">
-                  <div className={`w-2 h-2 rounded-full ${n.isRead ? "bg-gray-300 dark:bg-gray-600" : "bg-primary"}`}></div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm leading-relaxed ${n.isRead ? "text-gray-600 dark:text-gray-400" : "text-gray-900 dark:text-white font-medium"}`}>
-                    {n.message}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                    {new Date(n.createdAt).toLocaleString()}
-                  </p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className={`p-1 sm:p-1.5 rounded-full ${
+                n.type === 'application' ? 'bg-teal-100 dark:bg-teal-900' :
+                n.type === 'lease' ? 'bg-green-100 dark:bg-green-900' :
+                n.type === 'payment' ? 'bg-yellow-100 dark:bg-yellow-900' :
+                n.type === 'message' ? 'bg-purple-100 dark:bg-purple-900' :
+                'bg-gray-100 dark:bg-gray-700'
+              }`}>
+                {n.type === 'application' && <FaFileSignature className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-teal-600 dark:text-teal-400" />}
+                {n.type === 'lease' && <FaHandshake className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-600 dark:text-green-400" />}
+                {n.type === 'payment' && <FaMoneyBillWave className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-yellow-600 dark:text-yellow-400" />}
+                {n.type === 'message' && <FaComments className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-600 dark:text-purple-400" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm truncate">{n.title || 'Notification'}</p>
+                  {getNotificationBadge(n.type)}
                   {!n.isRead && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMarkAsRead(n._id || n.id);
-                      }}
-                      className="p-1 text-primary hover:text-primary/80 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                      aria-label="Mark as read"
-                    >
-                      <FaCheck className="w-3 h-3" />
-                    </button>
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full flex-shrink-0"></span>
                   )}
                 </div>
+                <p className="text-xs text-gray-500 truncate mb-1">{n.message}</p>
+                <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <span>{new Date(n.createdAt).toLocaleString()}</span>
+                </div>
+              </div>
+              
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                {!n.isRead && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMarkAsRead(n._id || n.id);
+                    }}
+                    className="p-1 text-primary hover:text-primary/80 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                    aria-label="Mark as read"
+                  >
+                    <FaCheck className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

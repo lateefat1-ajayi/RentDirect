@@ -1,8 +1,9 @@
 import Payment from "../models/Payment.js";
 import Lease from "../models/Lease.js";
 import Revenue from "../models/Revenue.js";
+import Notification from "../models/Notification.js";
 import paystack from "../config/paystack.js";
-import { createNotification } from "./notificationController.js"; 
+import { createNotification } from "./notificationController.js";
 import PDFDocument from "pdfkit";
 
 export const initiatePayment = async (req, res) => {
@@ -134,41 +135,51 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    // Create notifications for tenant and landlord
+    // Create notifications for tenant and landlord (only if payment was just created)
     const lease = await Lease.findById(payment.lease).populate('property', 'title');
     
-    // Notify tenant
-    await createNotification(
-      payment.tenant,
-      "payment",
-      "Payment Successful",
-      `Your rent payment of ₦${(payment.amount / 100).toLocaleString()} for ${lease.property.title} has been processed successfully.`,
-      `/user/payments/${payment.lease}`,
-      {},
-      req
-    );
+    // Check if notifications already exist for this payment to prevent duplicates
+    const existingNotifications = await Notification.find({
+      type: "payment",
+      "metadata.paymentId": payment._id
+    });
 
-    // Notify landlord
-    await createNotification(
-      payment.landlord,
-      "payment",
-      "Rent Payment Received",
-      `You have received a rent payment of ₦${(payment.amount / 100).toLocaleString()} for ${lease.property.title}.`,
-      `/landlord/transactions`,
-      {},
-      req
-    );
+    if (existingNotifications.length === 0) {
+      // Notify tenant
+      await createNotification(
+        payment.tenant,
+        "payment",
+        "Payment Successful",
+        `Your rent payment of ₦${(payment.amount / 100).toLocaleString()} for ${lease.property.title} has been processed successfully.`,
+        `/user/payments/${payment.lease}`,
+        { paymentId: payment._id },
+        req
+      );
 
-    // Notify admin of successful payment
-    await createNotification(
-      "admin",
-      "payment",
-      "New Rent Payment",
-      `A rent payment of ₦${(payment.amount / 100).toLocaleString()} has been processed for ${lease.property.title}.`,
-      `/admin/payments`,
-      {},
-      req
-    );
+      // Notify landlord
+      await createNotification(
+        payment.landlord,
+        "payment",
+        "Rent Payment Received",
+        `You have received a rent payment of ₦${(payment.amount / 100).toLocaleString()} for ${lease.property.title}.`,
+        `/landlord/transactions`,
+        { paymentId: payment._id },
+        req
+      );
+
+      // Notify admin of successful payment
+      await createNotification(
+        "admin",
+        "payment",
+        "New Rent Payment",
+        `A rent payment of ₦${(payment.amount / 100).toLocaleString()} has been processed for ${lease.property.title}.`,
+        `/admin/payments`,
+        { paymentId: payment._id },
+        req
+      );
+    } else {
+      console.log(`Notifications already exist for payment ${payment._id}, skipping duplicate creation`);
+    }
 
     res.json({ payment });
   } catch (err) {
@@ -281,6 +292,7 @@ export const getPaymentReceipt = async (req, res) => {
     doc.pipe(res);
 
     // Header / branding
+    doc.fontSize(20).text("RentDirect", { align: "center" });
     doc.fontSize(18).text("Payment Receipt", { align: "center" });
     doc.moveDown();
 
@@ -289,17 +301,33 @@ export const getPaymentReceipt = async (req, res) => {
     doc.text(`Date: ${new Date(payment.createdAt).toLocaleString()}`);
     doc.text(`Amount: ₦${amountNaira.toLocaleString()}`);
     doc.text(`Method: ${payment.paymentMethod || "Paystack"}`);
+    doc.text(`Status: PAID`);
     doc.moveDown();
 
     // Parties and property
-    doc.text(`Tenant: ${payment.tenant?.name || ""} <${payment.tenant?.email || ""}>`);
-    doc.text(`Landlord: ${payment.landlord?.name || ""} <${payment.landlord?.email || ""}>`);
-    doc.text(`Property: ${payment.property?.title || ""}`);
-    doc.text(`Location: ${payment.property?.location || ""}`);
+    doc.text(`Tenant:`);
+    doc.text(`Name: ${payment.tenant?.name || "N/A"}`);
+    doc.text(`Email: ${payment.tenant?.email || "N/A"}`);
+    doc.moveDown(0.5);
+    doc.text(`Landlord:`);
+    doc.text(`Name: ${payment.landlord?.name || "N/A"}`);
+    doc.text(`Email: ${payment.landlord?.email || "N/A"}`);
+    doc.moveDown(0.5);
+    doc.text(`Property: ${payment.property?.title || "N/A"}`);
+    doc.text(`Location: ${payment.property?.location || "N/A"}`);
     doc.moveDown();
 
-    // Paid watermark-ish
-    doc.fillColor('#0a7').fontSize(24).text('PAID', { align: 'center', opacity: 0.5 });
+    // Additional details
+    doc.text(`Transaction ID: ${payment._id}`);
+    doc.text(`Generated: ${new Date().toLocaleString()}`);
+    doc.moveDown();
+
+    // Footer
+    doc.fontSize(10).text("Thank you for using RentDirect!", { align: "center" });
+    doc.moveDown();
+
+    // Paid watermark
+    doc.fillColor('#0a7').fontSize(24).text('PAID', { align: 'center', opacity: 0.3 });
     doc.fillColor('black').fontSize(12);
 
     doc.end();

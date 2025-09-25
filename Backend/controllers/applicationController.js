@@ -7,7 +7,7 @@ import { createNotification } from "./notificationController.js";
 
 export const applyForProperty = async (req, res) => {
   try {
-    const { propertyId, moveInDate, message, applicant, employment, rentalHistory, occupants, reference, consent } = req.body;
+    const { propertyId, moveInDate, message, applicant, employment, rentalHistory, occupants, reference, consent, leaseDuration } = req.body;
 
     console.log("Application attempt - User ID:", req.user._id);
     console.log("Application attempt - User Role:", req.user.role);
@@ -54,6 +54,7 @@ export const applyForProperty = async (req, res) => {
       property: propertyId,
       moveInDate,
       message,
+      leaseDuration: leaseDuration || 1, // Default to 1 year if not provided
       applicant,
       employment,
       rentalHistory,
@@ -116,7 +117,7 @@ export const getLandlordApplications = async (req, res) => {
       .populate("tenant", "name email")
       .populate({
         path: "property",
-        select: "title location landlord",
+        select: "title location price landlord",
         populate: {
           path: "landlord",
           select: "name email _id"
@@ -170,15 +171,24 @@ export const getLandlordApplications = async (req, res) => {
 
 export const getTenantApplications = async (req, res) => {
   try {
-    if (req.user.role !== "tenant") {
-      return res.status(403).json({ message: "Only tenants can view their applications" });
+    // If userId is provided in params, use it (for viewing other users' applications)
+    // Otherwise, use the authenticated user's ID (for viewing own applications)
+    const targetUserId = req.params.userId || req.user._id;
+    
+    // If viewing someone else's applications, check permissions
+    if (targetUserId !== req.user._id) {
+      // Only landlords and admins can view other users' applications
+      if (req.user.role !== "landlord" && req.user.role !== "admin") {
+        return res.status(403).json({ message: "Not authorized to view this user's applications" });
+      }
     }
 
-    const applications = await Application.find({ tenant: req.user._id })
+    const applications = await Application.find({ tenant: targetUserId })
       .populate("property", "title location price")
       .populate("lease"); 
     res.json(applications);
   } catch (error) {
+    console.error("Error fetching tenant applications:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -233,13 +243,22 @@ export const updateApplicationStatus = async (req, res) => {
     }
 
     if (status === "approved") {
+      // Calculate total rent amount based on lease duration
+      const leaseDuration = application.leaseDuration || 1; // Default to 1 year
+      const totalRentAmount = property.price * leaseDuration;
+      
+      // Calculate end date based on lease duration
+      const startDate = new Date(application.moveInDate);
+      const endDate = new Date(startDate);
+      endDate.setFullYear(startDate.getFullYear() + leaseDuration);
+      
       const lease = await Lease.create({
         tenant: application.tenant._id,
         landlord: req.user._id,
         property: property._id,
         startDate: application.moveInDate,
-        endDate: new Date(application.moveInDate).setFullYear(new Date(application.moveInDate).getFullYear() + 1), // 1-year lease
-        rentAmount: property.price,
+        endDate: endDate,
+        rentAmount: totalRentAmount, // Total amount for the entire lease period
         status: "pending" // Start as pending until payment is made
       });
 

@@ -7,7 +7,8 @@ import Input from "../../components/ui/Input";
 import TextArea from "../../components/ui/TextArea";
 import { apiFetch, apiUpload } from "../../lib/api";
 import { toast } from "react-toastify";
-import { FaMapMarkerAlt, FaLocationArrow, FaSearch } from "react-icons/fa";
+import { FaMapMarkerAlt, FaLocationArrow, FaSearch, FaSync, FaShare } from "react-icons/fa";
+import ShareModal from "../../components/ui/ShareModal";
 
 export default function LandlordListings() {
   const { profile } = useOutletContext();
@@ -22,6 +23,7 @@ export default function LandlordListings() {
     bedrooms: 0,
     bathrooms: 0,
     size: "",
+    availableDurations: [1, 2, 3],
     address: {
       street: "",
       city: "",
@@ -44,6 +46,8 @@ export default function LandlordListings() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [viewingProperty, setViewingProperty] = useState(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null);
 
   const fetchListings = useCallback(async () => {
     try {
@@ -246,6 +250,11 @@ export default function LandlordListings() {
     }
   };
 
+  const handleShare = (property) => {
+    setSelectedProperty(property);
+    setShareModalOpen(true);
+  };
+
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -297,6 +306,7 @@ export default function LandlordListings() {
       formData.append("bedrooms", newProperty.bedrooms);
       formData.append("bathrooms", newProperty.bathrooms);
       if (newProperty.size) formData.append("size", newProperty.size);
+      formData.append("availableDurations", JSON.stringify(newProperty.availableDurations));
       
       // Add address and coordinates as JSON strings
       if (newProperty.address) {
@@ -333,6 +343,7 @@ export default function LandlordListings() {
         bedrooms: 0,
         bathrooms: 0,
         size: "",
+        availableDurations: [1, 2, 3],
         address: {
           street: "",
           city: "",
@@ -386,60 +397,94 @@ export default function LandlordListings() {
     <div className="space-y-10">
       {/* Verification Status Banner */}
       {profile?.verificationStatus !== "approved" && (
-        <Card className="p-4 border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
-              {profile?.verificationStatus === "pending" ? (
-                <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs">⏳</span>
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `radial-gradient(circle at 25px 25px, rgba(59, 130, 246, 0.3) 2px, transparent 0)`,
+              backgroundSize: '50px 50px'
+            }}></div>
+          </div>
+          
+          <div className="relative p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                  profile?.verificationStatus === "pending" 
+                    ? "bg-amber-100 dark:bg-amber-900/30" 
+                    : "bg-blue-100 dark:bg-blue-900/30"
+                }`}>
+                  {profile?.verificationStatus === "pending" ? (
+                    <FaClock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                  ) : (
+                    <FaShieldAlt className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  )}
                 </div>
-              ) : (
-                <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs">⚠️</span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {profile?.verificationStatus === "pending" 
+                      ? "Verification Under Review" 
+                      : "Complete Your Verification"
+                    }
+                  </h3>
+                  {profile?.verificationStatus === "pending" && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                      In Progress
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="flex-1">
-              <h3 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">
-                {profile?.verificationStatus === "pending" 
-                  ? "Verification Pending" 
-                  : "Verification Required"
-                }
-              </h3>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                {profile?.verificationStatus === "pending"
-                  ? "Your verification request is being reviewed. You'll be able to list properties once approved."
-                  : "You need to verify your account before you can list properties. Please complete the verification process."
-                }
-              </p>
-              {profile?.verificationStatus !== "pending" && (
-                <a 
-                  href="/landlord/verification" 
-                  className="inline-block mt-2 text-sm text-yellow-800 dark:text-yellow-200 underline hover:no-underline"
-                >
-                  Go to Verification →
-                </a>
-              )}
+                <p className="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed">
+                  {profile?.verificationStatus === "pending" 
+                    ? "Our team is reviewing your verification documents. This usually takes 1-3 business days. You'll receive an email notification once approved."
+                    : "Verify your identity to start listing properties and building trust with potential tenants. The process is quick and secure."
+                  }
+                </p>
+                <div className="flex items-center gap-3">
+                  {profile?.verificationStatus !== "pending" && (
+                    <a 
+                      href="/landlord/verification" 
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      <FaShieldAlt className="w-4 h-4" />
+                      Start Verification
+                    </a>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Main Content */}
       <section>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Property Management</h1>
-          {activeTab === "listings" && (
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          <div className="flex items-center gap-3">
+            {activeTab === "listings" && (
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                <option value="all">All Properties</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            )}
+            <Button 
+              onClick={fetchListings}
+              variant="outline"
+              size="sm"
+              className="p-2"
+              title="Refresh Properties"
+              aria-label="Refresh Properties"
             >
-              <option value="all">All Properties</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          )}
+              <FaSync className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Tab Navigation */}
@@ -582,7 +627,7 @@ export default function LandlordListings() {
               
               {/* Detailed Address Form */}
               {showAddressForm && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <Input
                     type="text"
                     name="street"
@@ -617,7 +662,7 @@ export default function LandlordListings() {
             <Input
               type="number"
               name="price"
-              placeholder="Price"
+              placeholder="Yearly Rent Price (₦)"
               value={newProperty.price}
               onChange={handleInputChange}
             />
@@ -659,6 +704,41 @@ export default function LandlordListings() {
               />
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   💡 Helpful for tenants to understand the space, but not required
+                </div>
+              </div>
+              
+              {/* Lease Duration Options */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Available Lease Durations (Years) *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3, 4, 5].map((year) => (
+                    <label key={year} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newProperty.availableDurations.includes(year)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewProperty(prev => ({
+                              ...prev,
+                              availableDurations: [...prev.availableDurations, year].sort()
+                            }));
+                          } else {
+                            setNewProperty(prev => ({
+                              ...prev,
+                              availableDurations: prev.availableDurations.filter(d => d !== year)
+                            }));
+                          }
+                        }}
+                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{year} Year{year > 1 ? 's' : ''}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  💡 Select which lease durations tenants can choose from
                 </div>
               </div>
             </div>
@@ -798,9 +878,9 @@ export default function LandlordListings() {
             </div>
             
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {filteredListings.map((property) => (
-              <Card key={property._id} className="p-4 flex flex-col">
+              <Card key={property._id} className="p-3 sm:p-4 flex flex-col">
                 {/* Property Images */}
                 <div className="relative">
                 <img
@@ -810,22 +890,22 @@ export default function LandlordListings() {
                       : "https://via.placeholder.com/600x400?text=Property"
                   }
                   alt={property.title}
-                    className="w-full h-40 object-cover rounded-md mb-3 cursor-pointer hover:opacity-90 transition-opacity"
+                    className="w-full h-32 sm:h-40 object-cover rounded-md mb-2 sm:mb-3 cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => openImageViewer(property, 0)}
                   />
                   
                   {/* Image count indicator */}
                   {property.images && property.images.length > 1 && (
-                    <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">
+                    <div className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full">
                       {property.images.length} photos
                     </div>
                   )}
                 </div>
                 
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-bold text-lg">{property.title}</h3>
+                <div className="flex items-start justify-between mb-1 sm:mb-2">
+                  <h3 className="font-bold text-base sm:text-lg truncate pr-2">{property.title}</h3>
                   {/* Property Status Badge */}
-                  <span                   className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 text-xs font-medium rounded-full flex-shrink-0 ${
                     getStatusCategory(property.status) === 'available' ? 'bg-green-100 text-green-800' :
                     getStatusCategory(property.status) === 'rented' ? 'bg-blue-100 text-blue-800' :
                     'bg-gray-100 text-gray-800'
@@ -835,29 +915,39 @@ export default function LandlordListings() {
                      property.status || 'Available'}
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground">{property.location}</p>
-                <p className="font-semibold mt-2">₦{property.price}/year</p>
-                <p className="text-sm mt-1">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{property.location}</p>
+                <p className="font-semibold mt-1 sm:mt-2 text-sm sm:text-base">₦{property.price}/year</p>
+                <p className="text-xs sm:text-sm mt-1">
                   {property.bedrooms} bed / {property.bathrooms} bath
                   {property.size && ` • ${property.size} sq ft`}
                 </p>
                 
                 {/* Application/Payment Info */}
                 {(property.hasApplications || property.hasPayments) && (
-                  <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-800 dark:text-yellow-200">
+                  <div className="mt-1 sm:mt-2 p-1.5 sm:p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-800 dark:text-yellow-200">
                     {property.hasApplications && `Applications: ${property.applicationCount}`}
                     {property.hasApplications && property.hasPayments && " • "}
                     {property.hasPayments && `Payments: ${property.paymentCount}`}
                   </div>
                 )}
                 
-                <div className="flex gap-2 mt-3">
+                <div className="flex gap-1 sm:gap-2 mt-2 sm:mt-3">
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => setEditing(property)}
+                    className="flex-1"
                   >
                     Edit
+                  </Button>
+                  <Button 
+                    onClick={() => handleShare(property)}
+                    variant="outline"
+                    size="sm"
+                    className="px-3"
+                    title="Share Property"
+                  >
+                    <FaShare className="w-4 h-4" />
                   </Button>
                 </div>
               </Card>
@@ -890,13 +980,19 @@ export default function LandlordListings() {
                 💡 Tip: Use "Use My Location" when creating new properties for precise coordinates
               </div>
             </div>
-            <input 
-              type="number" 
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-              placeholder="Price (₦)"
-              value={editing.price} 
-              onChange={(e) => setEditing({ ...editing, price: e.target.value })} 
-            />
+            <div className="relative">
+              <input 
+                type="number" 
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                placeholder="Price (₦)"
+                value={editing.price} 
+                readOnly
+                disabled
+              />
+              <div className="absolute inset-0 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Price cannot be edited</span>
+              </div>
+            </div>
             <textarea 
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
               placeholder="Description"
@@ -1020,6 +1116,13 @@ export default function LandlordListings() {
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        property={selectedProperty}
+      />
     </div>
   );
 }

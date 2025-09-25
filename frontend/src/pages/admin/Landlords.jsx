@@ -29,6 +29,7 @@ export default function AdminLandlords() {
       console.log("Fetching landlords...");
       const data = await apiFetch("/admin/landlords");
       console.log("Landlords data:", data);
+      console.log("Verification statuses:", data.map(l => ({ name: l.name, status: l.verificationStatus })));
       setLandlords(data);
     } catch (error) {
       console.error("Error fetching landlords:", error);
@@ -72,6 +73,7 @@ export default function AdminLandlords() {
   };
 
   const openVerificationModal = (landlord) => {
+    console.log("Opening verification modal for landlord:", landlord);
     setSelectedLandlord(landlord);
     setShowModal(true);
   };
@@ -137,12 +139,9 @@ export default function AdminLandlords() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Landlord Verification</h1>
-        <div className="text-sm text-gray-500">
-          {landlords.filter(l => l.verificationStatus === "pending").length} pending verifications
-        </div>
+      {/* Stats */}
+      <div className="text-sm text-gray-500">
+        {landlords.filter(l => l.verificationStatus === "pending").length} pending verifications
       </div>
 
       {/* Filters */}
@@ -222,17 +221,25 @@ export default function AdminLandlords() {
                     {landlord.verificationStatus === "pending" && (
                       <>
                         <Button
+                          type="button"
                           size="sm"
-                          onClick={() => handleVerification(landlord._id, "approve")}
+                          onClick={() => {
+                            console.log("Approving landlord:", landlord.name, "Status:", landlord.verificationStatus);
+                            handleVerification(landlord._id, "approve");
+                          }}
                           className="flex items-center gap-1 bg-green-600 hover:bg-green-700"
                         >
                           <FaCheck className="w-3 h-3" />
                           Approve
                         </Button>
                         <Button
+                          type="button"
                           size="sm"
                           variant="secondary"
-                          onClick={() => handleVerification(landlord._id, "reject")}
+                          onClick={() => {
+                            console.log("Rejecting landlord:", landlord.name, "Status:", landlord.verificationStatus);
+                            handleVerification(landlord._id, "reject");
+                          }}
                           className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white"
                         >
                           <FaTimes className="w-3 h-3" />
@@ -254,7 +261,7 @@ export default function AdminLandlords() {
 
       {/* Verification Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} size="xl">
-        {selectedLandlord && (
+        {selectedLandlord ? (
           <div className="p-6 space-y-6 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center space-x-4">
               <Avatar
@@ -549,6 +556,7 @@ export default function AdminLandlords() {
                 <h3 className="font-semibold text-gray-900 dark:text-white">Properties</h3>
                 {selectedLandlord.properties && selectedLandlord.properties.length > 3 && (
                   <Button
+                    type="button"
                     size="sm"
                     variant="secondary"
                     onClick={() => {
@@ -569,7 +577,12 @@ export default function AdminLandlords() {
                         <div>
                           <p className="font-medium">{property.title}</p>
                           <p className="text-sm text-gray-500">₦{property.price.toLocaleString()}/year</p>
-                          <p className="text-xs text-gray-400">{property.address}</p>
+                          <p className="text-xs text-gray-400">
+                            {property.address ? 
+                              `${property.address.street || ''} ${property.address.city || ''} ${property.address.state || ''}`.trim() || property.location :
+                              property.location || 'No address provided'
+                            }
+                          </p>
                         </div>
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           property.status === 'active' ? 'bg-green-100 text-green-800' :
@@ -600,18 +613,21 @@ export default function AdminLandlords() {
             {/* Action Buttons */}
             <div className="flex justify-end space-x-3 pt-4">
               <Button
+                type="button"
                 variant="secondary"
                 onClick={() => setShowModal(false)}
               >
                 Cancel
               </Button>
               <Button
+                type="button"
                 onClick={() => handleVerification(selectedLandlord._id, "reject")}
                 className="bg-red-600 hover:bg-red-700"
               >
                 Reject
               </Button>
               <Button
+                type="button"
                 onClick={() => handleVerification(selectedLandlord._id, "approve")}
                 disabled={!selectedLandlord.verificationData}
                 className={`${
@@ -624,6 +640,10 @@ export default function AdminLandlords() {
                 Approve
               </Button>
             </div>
+          </div>
+        ) : (
+          <div className="p-6 text-center">
+            <p className="text-gray-500">Loading landlord information...</p>
           </div>
         )}
       </Modal>
@@ -674,6 +694,7 @@ export default function AdminLandlords() {
             {/* Download Button */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
               <Button
+                type="button"
                 size="sm"
                 variant="secondary"
                 onClick={() => window.open(viewingDocument.url, '_blank')}

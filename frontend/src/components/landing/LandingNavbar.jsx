@@ -11,9 +11,16 @@ export default function LandingNavbar() {
     const token = localStorage.getItem("token");
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     
-    if (token && userData._id) {
+    // Only consider user authenticated if they have a token, user data, and are confirmed
+    if (token && userData._id && userData.isConfirmed) {
       setIsAuthenticated(true);
       setUser(userData);
+    } else {
+      // Clear any invalid authentication data
+      if (token && (!userData._id || !userData.isConfirmed)) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
     }
   }, []);
 
@@ -50,8 +57,8 @@ export default function LandingNavbar() {
         {/* Right: Buttons */}
         <div className="hidden md:flex gap-3 items-center">
           {isAuthenticated ? (
-            <Link to="/auth/login">
-              <Button variant="outline" size="sm">Login</Button>
+            <Link to={getDashboardLink()}>
+              <Button variant="primary" size="sm">Dashboard</Button>
             </Link>
           ) : (
             <>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Card from "../../components/ui/Card";
 import { apiFetch } from "../../lib/api";
-import { FaStar, FaUser, FaCalendarAlt, FaHome } from "react-icons/fa";
+import { FaStar, FaUser, FaCalendarAlt, FaHome, FaSync } from "react-icons/fa";
 import Button from "../../components/ui/Button";
 
 export default function LandlordReviews() {
@@ -70,17 +70,18 @@ export default function LandlordReviews() {
         {[1, 2, 3, 4, 5].map((star) => (
           <FaStar
             key={star}
-            className={`w-4 h-4 ${
+            className={`w-3 h-3 ${
               star <= rating ? "text-yellow-400" : "text-gray-300"
             }`}
           />
         ))}
-        <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+        <span className="ml-1 text-xs text-gray-600 dark:text-gray-400">
           {rating}/5
         </span>
       </div>
     );
   };
+
 
   return (
     <div className="space-y-6 p-6">
@@ -97,9 +98,11 @@ export default function LandlordReviews() {
             variant="outline"
             size="sm"
             disabled={loading}
-            className="flex items-center gap-2"
+            className="p-2"
+            title="Refresh Reviews"
+            aria-label="Refresh Reviews"
           >
-            {loading ? "Refreshing..." : "Refresh"}
+            <FaSync className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
@@ -108,9 +111,9 @@ export default function LandlordReviews() {
         <div className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
               ))}
             </div>
           </div>
@@ -126,20 +129,21 @@ export default function LandlordReviews() {
           </div>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {reviews.map((review) => (
-            <Card key={review._id} className="p-6">
-              <div className="flex items-start justify-between mb-4">
+            <Card key={review._id} className="p-4">
+              <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <FaUser className="w-5 h-5 text-primary" />
+                  <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                    <FaUser className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                      {review.reviewer?.name || "Anonymous"}
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
+                      {review.reviewer?.name || review.reviewer?.email || "Anonymous"}
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {review.reviewType === "landlord_review" ? "Landlord Review" : "Tenant Review"}
+                      {review.reviewer?.email && ` • ${review.reviewer.email}`}
                     </p>
                   </div>
                 </div>
@@ -152,17 +156,17 @@ export default function LandlordReviews() {
                 </div>
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {review.title && (
-                  <h4 className="font-medium text-gray-900 dark:text-white">
+                  <h4 className="font-medium text-gray-900 dark:text-white text-sm">
                     {review.title}
                   </h4>
                 )}
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
                   {review.comment}
                 </p>
                 {review.property && (
-                  <div className="text-sm text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-700">
                     <strong>Property:</strong> {review.property.title}
                     {review.property.location && ` • ${review.property.location}`}
                   </div>

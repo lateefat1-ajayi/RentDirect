@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import { apiFetch } from "../../lib/api";
-import { FaFileContract, FaCalendarAlt, FaHome, FaMoneyBillWave, FaCheckCircle, FaClock, FaTimesCircle, FaFlag, FaDownload } from "react-icons/fa";
+import { FaFileContract, FaCalendarAlt, FaHome, FaMoneyBillWave, FaCheckCircle, FaClock, FaTimesCircle, FaFlag, FaDownload, FaSync } from "react-icons/fa";
 import ReportIssueModal from "../../components/ui/ReportIssueModal";
 import { useRef } from "react";
 
@@ -218,13 +218,15 @@ export default function UserLeases() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Leases</h1>
+      <div className="flex justify-end items-center">
+        <Button onClick={fetchLeases} variant="outline" size="sm" className="p-2" title="Refresh Leases" aria-label="Refresh Leases">
+          <FaSync className="w-4 h-4" />
+        </Button>
       </div>
 
       {leases.length === 0 ? (
         <Card className="p-8 text-center">
-          <FaFileContract className="text-gray-400 text-6xl mx-auto mb-4" />
+          <FaFileContract className="text-primary text-6xl mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             No Leases Found
           </h2>
@@ -241,14 +243,14 @@ export default function UserLeases() {
             return (
               <Card
                 key={lease._id}
-                className="p-4 rounded-none border border-gray-200 dark:border-gray-700 shadow-sm"
+                className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm"
               >
                 <div className="flex flex-col gap-3">
                   {/* Header like applicants card */}
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex items-center gap-2">
-                      <FaFileContract className="text-blue-600" />
-                      <h3 className="font-semibold text-gray-900 dark:text-white truncate max-w-[260px]">
+                      <FaFileContract className="text-primary" />
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">
                         {lease.property?.title || "Property Title"}
                       </h3>
                     </div>
@@ -259,23 +261,23 @@ export default function UserLeases() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-700 dark:text-gray-300">
                     <div className="space-y-0.5">
                       <p className="text-xs text-gray-500">Property</p>
-                      <p className="truncate">{lease.property?.title || "N/A"}</p>
+                      <p className="truncate font-medium">{lease.property?.title || "N/A"}</p>
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-xs text-gray-500">Duration</p>
-                      <p className="truncate">{formatDate(lease.startDate)} → {formatDate(lease.endDate)}</p>
+                      <p className="truncate font-medium">{formatDate(lease.startDate)} → {formatDate(lease.endDate)}</p>
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-xs text-gray-500">Rent</p>
-                      <p className="truncate">₦{lease.rentAmount?.toLocaleString() || "N/A"}</p>
+                      <p className="truncate font-medium">₦{lease.rentAmount?.toLocaleString() || "N/A"}</p>
                     </div>
                   </div>
 
-                  {/* Footer actions */}
+                  {/* Footer actions like applicants: left link, right buttons */}
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
                     <button
                       type="button"
-                      className="text-sm text-teal-600 hover:underline bg-transparent p-0"
+                      className="text-sm font-semibold text-red-600 hover:text-red-700 hover:underline bg-transparent p-0"
                       onClick={() => {
                         setReportContext({ leaseId: lease._id, againstUser: lease.landlord, againstRole: 'landlord' });
                         setShowReportModal(true);
@@ -291,7 +293,8 @@ export default function UserLeases() {
                           <Button size="sm" className="whitespace-nowrap">Pay Rent</Button>
                         </Link>
                       )}
-                      {lease.tenantSignatureUrl && lease.landlordSignatureUrl && (
+                      {/* Only show download for active leases with successful payments */}
+                      {lease.status === "active" && isPaid && lease.tenantSignatureUrl && lease.landlordSignatureUrl && (
                         <Button variant="outline" size="sm" className="p-2" onClick={() => downloadLease(lease._id)} title="Download Lease" aria-label="Download Lease">
                           <FaDownload className="w-4 h-4" />
                         </Button>

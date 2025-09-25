@@ -5,7 +5,7 @@ import Input from "../../components/ui/Input";
 import Modal from "../../components/ui/Modal";
 import { apiFetch } from "../../lib/api";
 import { toast } from "react-toastify";
-import { FaSearch, FaFilter, FaEye, FaCheck, FaTimes, FaHome, FaUser } from "react-icons/fa";
+import { FaSearch, FaFilter, FaEye, FaCheck, FaTimes, FaHome, FaUser, FaStar, FaCalendarAlt, FaChevronDown, FaChevronRight } from "react-icons/fa";
 
 export default function AdminProperties() {
   const [properties, setProperties] = useState([]);
@@ -14,6 +14,7 @@ export default function AdminProperties() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [expandedLandlords, setExpandedLandlords] = useState(new Set());
 
   useEffect(() => {
     fetchProperties();
@@ -46,6 +47,17 @@ export default function AdminProperties() {
   const openPropertyModal = (property) => {
     setSelectedProperty(property);
     setShowModal(true);
+  };
+
+  // Toggle landlord accordion
+  const toggleLandlord = (landlordId) => {
+    const newExpanded = new Set(expandedLandlords);
+    if (newExpanded.has(landlordId)) {
+      newExpanded.delete(landlordId);
+    } else {
+      newExpanded.add(landlordId);
+    }
+    setExpandedLandlords(newExpanded);
   };
 
   const filteredProperties = properties.filter(property => {
@@ -109,12 +121,9 @@ export default function AdminProperties() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Property Management</h1>
-        <div className="text-sm text-gray-500">
-          {properties.filter(p => p.status === "pending").length} pending approvals
-        </div>
+      {/* Stats */}
+      <div className="text-sm text-gray-500">
+        {properties.filter(p => p.status === "pending").length} pending approvals
       </div>
 
       {/* Filters */}
@@ -150,103 +159,137 @@ export default function AdminProperties() {
         </div>
       </Card>
 
-      {/* Properties List - Grouped by Landlord */}
-      <div className="space-y-6">
+      {/* Properties List - Accordion by Landlord */}
+      <div className="space-y-4">
         {Object.keys(groupedProperties).length > 0 ? (
-          Object.values(groupedProperties).map((group) => (
-            <Card key={group.landlord._id} className="p-6">
-              {/* Landlord Header */}
-              <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center space-x-3">
-                  <FaUser className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">{group.landlord.name}</h3>
-                    <p className="text-sm text-gray-500">{group.landlord.email}</p>
-                    {group.landlord.verificationStatus === "approved" && (
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">Verified</span>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{group.properties.length} Properties</p>
-                </div>
-              </div>
-
-              {/* Properties List */}
-              <div className="space-y-3">
-                {group.properties.map((property) => (
-                  <div key={property._id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                        <FaHome className="w-6 h-6 text-gray-400" />
+          Object.values(groupedProperties).map((group) => {
+            const isExpanded = expandedLandlords.has(group.landlord._id);
+            
+            return (
+              <Card key={group.landlord._id} className="overflow-hidden">
+                {/* Landlord Header - Clickable */}
+                <button
+                  onClick={() => toggleLandlord(group.landlord._id)}
+                  className="w-full p-6 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                        <FaUser className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white">{property.title}</h4>
-                        <p className="text-sm text-gray-500">
-                          {property.address ? 
-                            `${property.address.street || ''} ${property.address.city || ''} ${property.address.state || ''}`.trim() || property.location :
-                            property.location
-                          }
+                        <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
+                          {group.landlord.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {group.landlord.email}
                         </p>
-                        <p className="text-xs text-gray-400">
-                          Listed: {new Date(property.createdAt).toLocaleDateString()}
-                        </p>
+                        {group.landlord.verificationStatus === "approved" && (
+                          <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">Verified</span>
+                        )}
                       </div>
                     </div>
-                    
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <div className="mb-1">{getStatusBadge(property.status)}</div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                          ₦{property.price.toLocaleString()}/year
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {group.properties.length} Properties
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {group.properties.filter(p => p.status === "pending").length} pending
                         </p>
                       </div>
-                      
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => openPropertyModal(property)}
-                          className="flex items-center gap-1"
-                        >
-                          <FaEye className="w-3 h-3" />
-                          Review
-                        </Button>
-                        
-                        {property.status === "pending" && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => handlePropertyAction(property._id, "approve")}
-                              className="flex items-center gap-1 bg-green-600 hover:bg-green-700"
-                            >
-                              <FaCheck className="w-3 h-3" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => handlePropertyAction(property._id, "reject")}
-                              className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white"
-                            >
-                              <FaTimes className="w-3 h-3" />
-                              Reject
-                            </Button>
-                          </>
+                      <div className="flex items-center">
+                        {isExpanded ? (
+                          <FaChevronDown className="w-4 h-4 text-gray-500" />
+                        ) : (
+                          <FaChevronDown className="w-4 h-4 text-gray-500 rotate-[-90deg]" />
                         )}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </Card>
-          ))
+                </button>
+
+                {/* Properties Content - Collapsible */}
+                {isExpanded && (
+                  <div className="border-t border-gray-100 dark:border-gray-700">
+                    <div className="p-6 space-y-3">
+                      {group.properties.map((property) => (
+                        <div key={property._id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                              <FaHome className="w-6 h-6 text-gray-400" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-gray-900 dark:text-white">{property.title}</h4>
+                              <p className="text-sm text-gray-500">
+                                {property.address ? 
+                                  `${property.address.street || ''} ${property.address.city || ''} ${property.address.state || ''}`.trim() || property.location :
+                                  property.location
+                                }
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                Listed: {new Date(property.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                              <div className="mb-1">{getStatusBadge(property.status)}</div>
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                ₦{property.price.toLocaleString()}/year
+                              </p>
+                            </div>
+                            
+                            <div className="flex space-x-2">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => openPropertyModal(property)}
+                                className="flex items-center gap-1"
+                              >
+                                <FaEye className="w-3 h-3" />
+                                Review
+                              </Button>
+                              
+                              {property.status === "pending" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handlePropertyAction(property._id, "approve")}
+                                    className="flex items-center gap-1 bg-green-600 hover:bg-green-700"
+                                  >
+                                    <FaCheck className="w-3 h-3" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => handlePropertyAction(property._id, "reject")}
+                                    className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white"
+                                  >
+                                    <FaTimes className="w-3 h-3" />
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })
         ) : (
           <Card className="p-8 text-center">
             <p className="text-gray-500">No properties found matching your criteria</p>
           </Card>
         )}
       </div>
+
 
       {/* Property Details Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)}>

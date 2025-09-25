@@ -12,13 +12,15 @@ export const createProperty = async (req, res) => {
       bedrooms, 
       bathrooms, 
       size,
+      availableDurations: availableDurationsStr,
       address: addressStr,
       coordinates: coordinatesStr
     } = req.body;
 
-    // Parse JSON strings for address and coordinates
+    // Parse JSON strings for address, coordinates, and availableDurations
     let address = {};
     let coordinates = {};
+    let availableDurations = [1, 2, 3]; // Default durations
     
     try {
       if (addressStr) {
@@ -34,6 +36,14 @@ export const createProperty = async (req, res) => {
       }
     } catch (error) {
       console.error("Error parsing coordinates:", error);
+    }
+    
+    try {
+      if (availableDurationsStr) {
+        availableDurations = typeof availableDurationsStr === 'string' ? JSON.parse(availableDurationsStr) : availableDurationsStr;
+      }
+    } catch (error) {
+      console.error("Error parsing availableDurations:", error);
     }
 
     console.log("Creating property - User details:", {
@@ -74,6 +84,7 @@ export const createProperty = async (req, res) => {
       bedrooms,
       bathrooms,
       size,
+      availableDurations,
       landlord: req.user._id,
       images,
       address: address || {},

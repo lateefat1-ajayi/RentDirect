@@ -32,6 +32,8 @@ export default function Messages() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
   const [deleteMessageId, setDeleteMessageId] = useState(null);
+  const [longPressMessageId, setLongPressMessageId] = useState(null);
+  const [touchStartTime, setTouchStartTime] = useState(null);
   const messagesEndRef = useRef(null);
 
   // Handle conversation selection from navigation state
@@ -136,6 +138,22 @@ export default function Messages() {
     }
   };
 
+  // Handle long press for mobile
+  const handleTouchStart = (messageId) => {
+    setTouchStartTime(Date.now());
+  };
+
+  const handleTouchEnd = (messageId) => {
+    if (touchStartTime && Date.now() - touchStartTime > 500) { // 500ms long press
+      setLongPressMessageId(messageId);
+    }
+    setTouchStartTime(null);
+  };
+
+  const handleTouchCancel = () => {
+    setTouchStartTime(null);
+  };
+
   // Format message time
   const formatMessageTime = (dateString) => {
     try {
@@ -174,17 +192,21 @@ export default function Messages() {
 
   return (
     <div className="flex h-full bg-gray-50 dark:bg-gray-900">
-      {/* Conversations List - Fixed width */}
-      <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
+      {/* Conversations List - Responsive width */}
+      <div className={`${selectedConversationId ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col flex-shrink-0`}>
         {/* Search Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Messages</h2>
-          <Input
-            placeholder="Search conversations..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full"
-          />
+        <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="relative">
+            <Input
+              placeholder="Search conversations..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10"
+            />
+            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
         </div>
 
         {/* Conversations List */}
@@ -198,26 +220,26 @@ export default function Messages() {
               <div
                 key={conv.id}
                 onClick={() => selectConversation(conv.id)}
-                className={`p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                className={`p-3 sm:p-4 border-b border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                   selectedConversationId === conv.id ? 'bg-teal-50 dark:bg-teal-900/20 border-l-4 border-l-teal-500' : ''
                 }`}
               >
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 sm:space-x-3">
                   <Avatar
                     src={conv.participantImage || null}
                     alt={conv.participantName || 'Unknown User'}
-                    size="w-8 h-8"
+                    size="w-7 h-7 sm:w-8 sm:h-8"
                     isOnline={true} // You can implement real-time online status later
                   />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                    <h3 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">
                       {conv.participantName || 'Unknown User'}
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                       {conv.participantRole ? conv.participantRole.charAt(0).toUpperCase() + conv.participantRole.slice(1) : 'User'}
                     </p>
                     {conv.lastMessage && (
-                      <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-1">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5 sm:mt-1">
                         {conv.lastMessage.text || 'No message'}
                       </p>
                     )}
@@ -229,22 +251,23 @@ export default function Messages() {
         </div>
       </div>
 
-      {/* Chat Area - Flexible width */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
+      {/* Chat Area - Responsive width */}
+      <div className={`${selectedConversationId ? 'flex' : 'hidden lg:flex'} flex-1 flex-col bg-white dark:bg-gray-800`}>
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+            <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 sm:space-x-3">
                   <button
                     onClick={() => {
                       console.log("Back button clicked, closing chat");
                       selectConversation(null);
                     }}
-                    className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 mr-2"
+                    className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 mr-1 sm:mr-2"
+                    title="Close chat"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                       <path fillRule="evenodd" d="M15.78 4.72a.75.75 0 0 1 0 1.06L9.56 12l6.22 6.22a.75.75 0 1 1-1.06 1.06l-6.75-6.75a.75.75 0 0 1 0-1.06l6.75-6.75a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />
                     </svg>
                   </button>
@@ -280,7 +303,10 @@ export default function Messages() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
+            <div 
+              className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900"
+              onClick={() => setLongPressMessageId(null)}
+            >
               {selectedConversation.messages?.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   <p className="text-lg font-medium">No messages yet</p>
@@ -298,7 +324,10 @@ export default function Messages() {
                           msg.fromMe
                             ? 'bg-teal-500 text-white'
                             : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
-                        }`}
+                        } ${longPressMessageId === msg.id ? 'ring-2 ring-blue-400' : ''}`}
+                        onTouchStart={() => msg.fromMe && handleTouchStart(msg.id)}
+                        onTouchEnd={() => msg.fromMe && handleTouchEnd(msg.id)}
+                        onTouchCancel={handleTouchCancel}
                       >
                         <p className="text-sm break-words whitespace-pre-wrap mb-2">{msg.text || 'Empty message'}</p>
                         
@@ -310,21 +339,47 @@ export default function Messages() {
                           </span>
                         </div>
                       </div>
-                      {/* Message Actions outside bubble */}
+                      
+                      {/* Desktop: Always visible actions */}
                       {msg.fromMe && (
-                        <div className="flex items-center justify-end gap-3 mt-1">
+                        <div className="hidden lg:flex items-center justify-end gap-2 mt-1">
                           <button
                             onClick={() => {
                               setEditingMessage(msg);
                               setEditText(msg.text || '');
                             }}
-                            className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                            className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 px-1 py-0.5"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => setDeleteMessageId(msg.id)}
-                            className="text-xs text-red-400 hover:text-red-600"
+                            className="text-xs text-red-400 hover:text-red-600 px-1 py-0.5"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Mobile: Long press context menu */}
+                      {msg.fromMe && longPressMessageId === msg.id && (
+                        <div className="lg:hidden flex items-center justify-end gap-2 mt-1 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600">
+                          <button
+                            onClick={() => {
+                              setEditingMessage(msg);
+                              setEditText(msg.text || '');
+                              setLongPressMessageId(null);
+                            }}
+                            className="text-xs text-blue-600 dark:text-blue-400 px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDeleteMessageId(msg.id);
+                              setLongPressMessageId(null);
+                            }}
+                            className="text-xs text-red-600 dark:text-red-400 px-2 py-1 rounded bg-red-50 dark:bg-red-900/20"
                           >
                             Delete
                           </button>
@@ -338,8 +393,8 @@ export default function Messages() {
             </div>
 
             {/* Message Input */}
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
-              <div className="flex space-x-2">
+            <div className="p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+              <div className="flex space-x-1 sm:space-x-2">
                 <Input
                   placeholder="Type your message..."
                   value={newMessage}
@@ -355,7 +410,7 @@ export default function Messages() {
                 <Button
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim() || sendingMessage}
-                  className="px-6"
+                  className="px-3 sm:px-6 text-sm sm:text-base"
                 >
                   {sendingMessage ? 'Sending...' : 'Send'}
                 </Button>
@@ -363,9 +418,9 @@ export default function Messages() {
             </div>
           </>
         ) : (
-          <div className="flex-1 grid place-items-center bg-gray-50 dark:bg-gray-900">
-            <div className="text-center text-gray-500" >
-              <p className="text-lg font-medium">Select a conversation</p>
+          <div className="hidden lg:flex flex-1 items-center justify-center bg-gray-50 dark:bg-gray-900">
+            <div className="text-center text-gray-500 max-w-md mx-auto px-6">
+              <p className="text-lg font-medium mb-2">Select a conversation</p>
               <p className="text-sm">Choose a conversation from the sidebar to start messaging</p>
             </div>
           </div>
@@ -395,16 +450,6 @@ export default function Messages() {
                 className="flex-1"
               >
                 Update
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setEditingMessage(null);
-                  setEditText("");
-                }}
-                className="flex-1"
-              >
-                Cancel
               </Button>
             </div>
           </div>
@@ -441,13 +486,6 @@ export default function Messages() {
                 className="flex-1"
               >
                 Delete
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setDeleteMessageId(null)}
-                className="flex-1"
-              >
-                Cancel
               </Button>
             </div>
           </div>

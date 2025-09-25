@@ -3,7 +3,7 @@ import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api";
-import { FaHome, FaCalendarAlt, FaMapMarkerAlt, FaMoneyBillWave, FaCheckCircle, FaClock, FaTimesCircle, FaEye } from "react-icons/fa";
+import { FaHome, FaCalendarAlt, FaMapMarkerAlt, FaMoneyBillWave, FaCheckCircle, FaClock, FaTimesCircle, FaEye, FaSync, FaFileAlt } from "react-icons/fa";
 
 export default function UserApplications() {
   const { profile } = useOutletContext();
@@ -12,18 +12,21 @@ export default function UserApplications() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
 
+  const fetchApplications = async () => {
+    try {
+      setLoading(true);
+      const apps = await apiFetch("/applications/tenant");
+      setApplications(Array.isArray(apps) ? apps : []);
+    } catch (err) {
+      console.error("Failed to load applications", err);
+      setApplications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const apps = await apiFetch("/applications/tenant");
-        setApplications(Array.isArray(apps) ? apps : []);
-      } catch (err) {
-        console.error("Failed to load applications", err);
-        setApplications([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchApplications();
   }, []);
 
   const getStatusBadge = (status) => {
@@ -75,13 +78,15 @@ export default function UserApplications() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Applications</h1>
+      <div className="flex justify-end items-center">
+        <Button onClick={fetchApplications} variant="outline" size="sm" className="p-2" title="Refresh Applications" aria-label="Refresh Applications">
+          <FaSync className="w-4 h-4" />
+        </Button>
       </div>
 
       {applications.length === 0 ? (
         <Card className="p-8 text-center">
-          <FaHome className="text-gray-400 text-6xl mx-auto mb-4" />
+          <FaFileAlt className="text-primary text-6xl mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             No Applications Found
           </h2>
@@ -95,118 +100,207 @@ export default function UserApplications() {
       ) : (
         <div className="grid gap-4">
           {applications.map((app) => (
-            <Card key={app._id} className="p-4 hover:shadow-md transition-all duration-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                    <FaHome className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <Card key={app._id} className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div className="flex flex-col gap-3">
+                {/* Header like lease cards */}
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex items-center gap-2">
+                    <FaFileAlt className="text-primary" />
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                      {app.property?.title || "Property Title"}
+                    </h3>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {app.property?.title || "Property Title"}
-                      </h3>
-                      {getStatusBadge(app.status)}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <FaMapMarkerAlt className="w-3 h-3" />
-                        {app.property?.location || "N/A"}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <FaMoneyBillWave className="w-3 h-3" />
-                        ₦{app.property?.price?.toLocaleString() || "N/A"}/Year
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <FaCalendarAlt className="w-3 h-3" />
-                        Applied {new Date(app.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
+                  {getStatusBadge(app.status)}
+                </div>
+
+                {/* Meta grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-700 dark:text-gray-300">
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-gray-500">Property</p>
+                    <p className="truncate font-medium">{app.property?.title || "N/A"}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-gray-500">Location</p>
+                    <p className="truncate font-medium">{app.property?.location || "N/A"}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-gray-500">Rent</p>
+                    <p className="truncate font-medium">₦{app.property?.price?.toLocaleString() || "N/A"}/year</p>
                   </div>
                 </div>
-                
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setSelected(app)}
-                  className="flex items-center gap-2"
-                >
-                  <FaEye className="w-4 h-4" />
-                  View
-                </Button>
+
+                {/* Additional info */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700 dark:text-gray-300">
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-gray-500">Applied Date</p>
+                    <p className="truncate font-medium">{new Date(app.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-gray-500">Move-in Date</p>
+                    <p className="truncate font-medium">{app.moveInDate ? new Date(app.moveInDate).toLocaleDateString() : "Not specified"}</p>
+                  </div>
+                </div>
+
+                {/* Footer actions */}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <div className="text-xs text-gray-500">
+                    Application ID: {app._id?.slice(-8)}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelected(app)}
+                    className="flex items-center gap-2"
+                  >
+                    <FaEye className="w-4 h-4" />
+                    View Details
+                  </Button>
+                </div>
               </div>
             </Card>
           ))}
         </div>
       )}
 
-      {/* Modal */}
+      {/* Application Details Modal */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg relative">
-            <button
-              onClick={() => setSelected(null)}
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              ✕
-            </button>
-
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Application Details</h2>
-
-            <div className="space-y-2 text-sm">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong className="text-gray-900 dark:text-white">Property:</strong> {selected.property?.title}
-              </p>
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong className="text-gray-900 dark:text-white">Applied on:</strong>{" "}
-                {new Date(selected.createdAt).toLocaleDateString()}
-              </p>
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong className="text-gray-900 dark:text-white">Status:</strong>{" "}
-                <span
-                  className={`px-2 py-1 rounded text-xs ${selected.status === "approved"
-                    ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200"
-                    : selected.status === "pending"
-                      ? "bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200"
-                      : "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200"
-                    }`}
-                >
-                  {selected.status}
-                </span>
-              </p>
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong className="text-gray-900 dark:text-white">Move-in date:</strong>{" "}
-                {selected.moveInDate
-                  ? new Date(selected.moveInDate).toLocaleDateString()
-                  : "—"}
-              </p>
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong className="text-gray-900 dark:text-white">Employment:</strong>{" "}
-                {selected.employment?.jobTitle} @{" "}
-                {selected.employment?.employerName}
-              </p>
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong className="text-gray-900 dark:text-white">Income:</strong>{" "}
-                ₦
-                {selected.employment?.monthlyIncome?.toLocaleString() ||
-                  "Not provided"}
-              </p>
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong className="text-gray-900 dark:text-white">Rental History:</strong>{" "}
-                {selected.rentalHistory?.previousAddress || "—"}
-              </p>
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong className="text-gray-900 dark:text-white">Reason for Leaving:</strong>{" "}
-                {selected.rentalHistory?.reasonForLeaving || "—"}
-              </p>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Application Details</h2>
+              <button
+                onClick={() => setSelected(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="mt-4 flex gap-2">
+            <div className="space-y-4">
+              {/* Property Information */}
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                  <FaHome className="text-blue-600" />
+                  Property Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Property:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.property?.title || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Location:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.property?.location || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Rent:</span>
+                    <p className="text-gray-900 dark:text-white">₦{selected.property?.price?.toLocaleString() || "N/A"}/year</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Status:</span>
+                    <div className="mt-1">
+                      {getStatusBadge(selected.status)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Application Details */}
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                  <FaFileAlt className="text-green-600" />
+                  Application Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Applied Date:</span>
+                    <p className="text-gray-900 dark:text-white">{new Date(selected.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Move-in Date:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.moveInDate ? new Date(selected.moveInDate).toLocaleDateString() : "Not specified"}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Lease Duration:</span>
+                    <p className="text-gray-900 dark:text-white">{selected.leaseDuration ? `${selected.leaseDuration} year${selected.leaseDuration > 1 ? 's' : ''}` : "Not specified"}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Application ID:</span>
+                    <p className="text-gray-900 dark:text-white font-mono text-xs">{selected._id}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employment Information */}
+              {selected.employment && (
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                    <FaMoneyBillWave className="text-purple-600" />
+                    Employment Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Job Title:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.employment.jobTitle || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Employer:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.employment.employerName || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Monthly Income:</span>
+                      <p className="text-gray-900 dark:text-white">₦{selected.employment.monthlyIncome?.toLocaleString() || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Employer Phone:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.employment.employerPhone || "Not provided"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Rental History */}
+              {selected.rentalHistory && (
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                    <FaCalendarAlt className="text-orange-600" />
+                    Rental History
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Previous Address:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.rentalHistory.previousAddress || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Previous Landlord:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.rentalHistory.previousLandlord || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Duration:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.rentalHistory.previousDuration || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Reason for Leaving:</span>
+                      <p className="text-gray-900 dark:text-white">{selected.rentalHistory.reasonForLeaving || "Not provided"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Message */}
+              {selected.message && (
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Message to Landlord</h3>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{selected.message}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end">
               <Button variant="secondary" onClick={() => setSelected(null)}>
                 Close
               </Button>
             </div>
-
           </div>
         </div>
       )}

@@ -5,7 +5,8 @@ import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import { apiFetch } from "../../lib/api";
-import { FaHeart, FaMapMarkerAlt, FaLocationArrow } from "react-icons/fa";
+import { FaHeart, FaMapMarkerAlt, FaLocationArrow, FaShare } from "react-icons/fa";
+import ShareModal from "../../components/ui/ShareModal";
 
 export default function PropertyList() {
   const [search, setSearch] = useState("");
@@ -21,6 +22,8 @@ export default function PropertyList() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [viewingProperty, setViewingProperty] = useState(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null);
 
   // Get user's current location
   const getCurrentLocation = () => {
@@ -170,6 +173,11 @@ export default function PropertyList() {
     }
   }, [viewingProperty, selectedImageIndex]);
 
+  const handleShare = (property) => {
+    setSelectedProperty(property);
+    setShareModalOpen(true);
+  };
+
   const filteredProperties = currentItems.filter((p) => {
     const term = search.toLowerCase();
     return (
@@ -302,13 +310,25 @@ export default function PropertyList() {
               {property.size && (
                 <p className="text-xs text-gray-400 mt-1">{property.size} sq ft</p>
               )}
-              <Link
-                to={`/user/properties/${property._id || property.id}`}
-              >
-                <Button variant="primary" size="md" className="mt-2 w-full">
-                  View Details
+              <div className="flex gap-2 mt-2">
+                <Link
+                  to={`/user/properties/${property._id || property.id}`}
+                  className="flex-1"
+                >
+                  <Button variant="primary" size="md" className="w-full">
+                    View Details
+                  </Button>
+                </Link>
+                <Button
+                  onClick={() => handleShare(property)}
+                  variant="outline"
+                  size="md"
+                  className="px-3"
+                  title="Share Property"
+                >
+                  <FaShare className="w-4 h-4" />
                 </Button>
-              </Link>
+              </div>
 
             </Card>
           ))}
@@ -387,6 +407,13 @@ export default function PropertyList() {
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        property={selectedProperty}
+      />
     </div>
   );
 }

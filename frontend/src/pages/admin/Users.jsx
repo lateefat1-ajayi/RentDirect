@@ -107,12 +107,9 @@ export default function AdminUsers() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
-        <div className="text-sm text-gray-500">
-          {users.length} total users
-        </div>
+      {/* Stats */}
+      <div className="text-sm text-gray-500">
+        {users.length} total users
       </div>
 
       {/* Filters */}

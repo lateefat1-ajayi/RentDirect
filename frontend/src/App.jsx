@@ -8,6 +8,7 @@ import Contact from "./pages/public/Contact";
 import Faq from "./pages/public/Faq";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import VerifyCode from "./pages/auth/VerifyCode";
 import ConfirmEmail from "./pages/auth/ConfirmEmail";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
@@ -65,6 +66,7 @@ import Layout from "./components/layouts/Layout";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import PublicProfile from "./pages/public/PublicProfile";
+import SharedProperty from "./pages/public/SharedProperty";
 
 
 export default function App() {
@@ -85,12 +87,14 @@ export default function App() {
         <Route path="/auth">
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
+          <Route path="verify-code" element={<VerifyCode />} />
         </Route>
 
         <Route path="/confirm-email/:token" element={<ConfirmEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/payment/callback" element={<PaymentCallback />} />
+        <Route path="/property/shared/:propertyId/:shareToken" element={<SharedProperty />} />
 
         {/* User Routes */}
         <Route

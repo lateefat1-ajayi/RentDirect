@@ -85,8 +85,8 @@ export default function FAQ() {
           <div className="inline-flex items-center justify-center w-12 h-12 bg-white/20 rounded-full mb-4">
             <FaQuestionCircle className="w-6 h-6" />
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">Frequently Asked Questions</h1>
-          <p className="text-lg text-white/90 max-w-2xl mx-auto leading-relaxed">
+          <h1 className="text-2xl md:text-3xl font-bold mb-3">Frequently Asked Questions</h1>
+          <p className="text-base text-white/90 max-w-2xl mx-auto leading-relaxed">
             Find answers to common questions about RentDirect and how our platform works
           </p>
         </div>

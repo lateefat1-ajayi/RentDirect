@@ -13,7 +13,8 @@ export default function AdminReports() {
     totalRevenue: 0,
     monthlyRevenue: 0,
     totalTransactions: 0,
-    averageTransaction: 0
+    averageTransaction: 0,
+    platformFees: 0
   });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({
@@ -65,6 +66,16 @@ export default function AdminReports() {
     }
 
     setPayments(filtered);
+    
+    // Update platform fees based on filtered payments
+    const filteredPlatformFees = filtered.reduce((sum, payment) => {
+      return sum + (payment.platformFee || 0);
+    }, 0);
+    
+    setStats(prevStats => ({
+      ...prevStats,
+      platformFees: filteredPlatformFees
+    }));
   }, [allPayments, filter]);
 
   const fetchReportData = async () => {
@@ -79,11 +90,20 @@ export default function AdminReports() {
       
       setAllPayments(paymentsData || []);
       setPayments(paymentsData || []);
-      setStats(statsData || {
-        totalRevenue: 0,
-        monthlyRevenue: 0,
-        totalTransactions: 0,
-        averageTransaction: 0
+      
+      // Calculate platform fees from payments data
+      const totalPlatformFees = (paymentsData || []).reduce((sum, payment) => {
+        return sum + (payment.platformFee || 0);
+      }, 0);
+      
+      setStats({
+        ...(statsData || {
+          totalRevenue: 0,
+          monthlyRevenue: 0,
+          totalTransactions: 0,
+          averageTransaction: 0
+        }),
+        platformFees: totalPlatformFees
       });
       
     } catch (error) {
@@ -94,7 +114,8 @@ export default function AdminReports() {
         totalRevenue: 0,
         monthlyRevenue: 0,
         totalTransactions: 0,
-        averageTransaction: 0
+        averageTransaction: 0,
+        platformFees: 0
       });
       setAllPayments([]);
       setPayments([]);
@@ -176,9 +197,14 @@ export default function AdminReports() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Platform Reports</h1>
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Financial reports and user-generated reports
+          </p>
+        </div>
         <div className="text-sm text-gray-500">
           Last updated: {new Date().toLocaleString()}
         </div>
@@ -259,16 +285,17 @@ export default function AdminReports() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Amount</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Platform Fees</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(stats.averageTransaction)}
+                {formatCurrency(stats.platformFees || 0)}
               </p>
             </div>
-            <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-full">
-              <FaMoneyBillWave className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+            <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-full">
+              <FaMoneyBillWave className="w-5 h-5 text-orange-600 dark:text-orange-400" />
             </div>
           </div>
         </Card>
+
       </div>
 
       {/* Filters */}
@@ -315,33 +342,33 @@ export default function AdminReports() {
       </Card>
 
       {/* Payment History */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Payment History</h2>
+      <Card className="p-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Payment History</h2>
         
         {payments.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Transaction ID
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     User
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Property
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Amount
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Platform Fee
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Date
                   </th>
                 </tr>
@@ -349,22 +376,22 @@ export default function AdminReports() {
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {payments.map((payment) => (
                   <tr key={payment._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       {payment.transactionId || payment._id.slice(-8)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {payment.tenant?.name || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {payment.property?.title || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {formatCurrency(payment.amount)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {formatCurrency(payment.platformFee || 0)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.status)}`}>
                         {payment.status === 'success' ? 'Success' : 
                          payment.status === 'pending' ? 'Pending' :
@@ -372,7 +399,7 @@ export default function AdminReports() {
                          payment.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatDate(payment.createdAt)}
                     </td>
                   </tr>
@@ -391,10 +418,10 @@ export default function AdminReports() {
 
       {/* User Reports */}
       {activeTab === "userReports" && (
-        <Card className="p-6">
-          <div className="flex items-center gap-3 mb-4">
+        <Card className="p-4">
+          <div className="flex items-center gap-3 mb-3">
             <FaFlag className="w-5 h-5 text-red-600" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">User Reports</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">User Reports</h2>
           </div>
           {userReports.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No reports found</div>

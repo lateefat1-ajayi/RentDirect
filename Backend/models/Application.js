@@ -53,6 +53,7 @@ const applicationSchema = new mongoose.Schema({
   },
   moveInDate: Date,
   message: String,
+  leaseDuration: { type: Number, default: 1 }, // Lease duration in years
 
   applicant: applicantSchema,
   employment: employmentSchema,

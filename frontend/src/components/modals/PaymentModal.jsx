@@ -78,7 +78,7 @@ export default function PaymentModal({ isOpen, onClose, lease, onSuccess }) {
           <div className="space-y-2">
             <p className="text-gray-700 dark:text-gray-300"><span className="font-medium">Property:</span> {lease.property?.title}</p>
             <p className="text-gray-700 dark:text-gray-300"><span className="font-medium">Location:</span> {lease.property?.location}</p>
-            <p className="text-gray-700 dark:text-gray-300"><span className="font-medium">Rent Amount:</span> ₦{lease.rentAmount?.toLocaleString()}</p>
+            <p className="text-gray-700 dark:text-gray-300"><span className="font-medium">Total Rent Amount:</span> ₦{lease.rentAmount?.toLocaleString()}</p>
             <p className="text-gray-700 dark:text-gray-300"><span className="font-medium">Lease Period:</span> {new Date(lease.startDate).toLocaleDateString()} - {new Date(lease.endDate).toLocaleDateString()}</p>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function PaymentModal({ isOpen, onClose, lease, onSuccess }) {
           <h3 className="font-semibold text-lg mb-2 text-blue-900 dark:text-blue-100">Payment Breakdown</h3>
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-gray-700 dark:text-gray-300">Rent Amount:</span>
+              <span className="text-gray-700 dark:text-gray-300">Total Rent Amount:</span>
               <span className="font-medium text-gray-900 dark:text-white">₦{lease.rentAmount?.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">

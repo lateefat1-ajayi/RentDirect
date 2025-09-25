@@ -4,13 +4,14 @@ import LandlordSidebar from "../sidebar/LandlordSidebar";
 import LandlordNavbar from "../navbar/LandlordNavbar";
 import { apiFetch } from "../../lib/api";
 import useDarkMode from "../../hooks/useDarkMode";
+import { useNotifications } from "../../context/NotificationsContext";
 
 export default function LandlordLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [shellLoading, setShellLoading] = useState(true);
   const location = useLocation();
+  const { unreadCount } = useNotifications();
   
   // Initialize dark mode
   useDarkMode();
@@ -23,15 +24,10 @@ export default function LandlordLayout() {
     (async () => {
       try {
         setShellLoading(true);
-        const [me, counts] = await Promise.all([
-          apiFetch("/users/profile"),
-          apiFetch("/notifications/unread-counts").catch(() => ({ total: 0 })),
-        ]);
+        const me = await apiFetch("/users/profile");
         setProfile(me || null);
-        setUnreadCount(counts?.total || 0);
       } catch (e) {
         setProfile(null);
-        setUnreadCount(0);
       } finally {
         setShellLoading(false);
       }

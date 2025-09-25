@@ -70,17 +70,17 @@ export default function AdminNotifications() {
   const getNotificationIcon = (type) => {
     switch (type) {
       case "registration":
-        return <FaUser className="w-4 h-4 text-blue-600" />;
+        return <FaUser className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-600 dark:text-blue-400" />;
       case "property":
-        return <FaHome className="w-4 h-4 text-green-600" />;
+        return <FaHome className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-600 dark:text-green-400" />;
       case "application":
-        return <FaFileAlt className="w-4 h-4 text-purple-600" />;
+        return <FaFileAlt className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-600 dark:text-purple-400" />;
       case "payment":
-        return <FaCreditCard className="w-4 h-4 text-yellow-600" />;
+        return <FaCreditCard className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-yellow-600 dark:text-yellow-400" />;
       case "verification":
-        return <FaExclamationTriangle className="w-4 h-4 text-orange-600" />;
+        return <FaExclamationTriangle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-orange-600 dark:text-orange-400" />;
       default:
-        return <FaBell className="w-4 h-4 text-gray-600" />;
+        return <FaBell className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-600 dark:text-gray-400" />;
     }
   };
 
@@ -162,59 +162,62 @@ export default function AdminNotifications() {
       <div className="space-y-4">
         {filteredNotifications.length > 0 ? (
           filteredNotifications.map((notification) => (
-            <Card 
+            <div 
               key={notification._id} 
-              className={`p-4 transition-all ${
+              className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-all ${
                 notification.isRead 
                   ? 'bg-gray-50 dark:bg-gray-800' 
                   : 'bg-white dark:bg-gray-700 border-l-4 border-l-primary'
               }`}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3 flex-1">
-                  <div className="p-2 bg-gray-100 dark:bg-gray-600 rounded-full">
-                    {getNotificationIcon(notification.type)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-gray-900 dark:text-white">
-                        {notification.title}
-                      </h3>
-                      {getNotificationBadge(notification.type)}
-                      {!notification.isRead && (
-                        <span className="w-2 h-2 bg-primary rounded-full"></span>
-                      )}
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-400 mb-2">
-                      {notification.message}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <span>{new Date(notification.createdAt).toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
+              <div className={`p-1 sm:p-1.5 rounded-full ${
+                notification.type === 'registration' ? 'bg-blue-100 dark:bg-blue-900' :
+                notification.type === 'property' ? 'bg-green-100 dark:bg-green-900' :
+                notification.type === 'application' ? 'bg-purple-100 dark:bg-purple-900' :
+                notification.type === 'payment' ? 'bg-yellow-100 dark:bg-yellow-900' :
+                notification.type === 'verification' ? 'bg-orange-100 dark:bg-orange-900' :
+                'bg-gray-100 dark:bg-gray-700'
+              }`}>
+                {getNotificationIcon(notification.type)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm truncate">
+                    {notification.title}
+                  </h3>
+                  {getNotificationBadge(notification.type)}
                   {!notification.isRead && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => markAsRead(notification._id)}
-                      className="flex items-center gap-1"
-                    >
-                      <FaCheck className="w-3 h-3" />
-                      Mark Read
-                    </Button>
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full flex-shrink-0"></span>
                   )}
-                  {notification.isRead && (
-                    <span className="text-sm text-gray-400 flex items-center gap-1">
-                      <FaEye className="w-3 h-3" />
-                      Read
-                    </span>
-                  )}
+                </div>
+                <p className="text-xs text-gray-500 truncate mb-1">
+                  {notification.message}
+                </p>
+                <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <span>{new Date(notification.createdAt).toLocaleString()}</span>
                 </div>
               </div>
-            </Card>
+              
+              <div className="flex items-center gap-2">
+                {!notification.isRead && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => markAsRead(notification._id)}
+                    className="flex items-center gap-1"
+                  >
+                    <FaCheck className="w-3 h-3" />
+                    Mark Read
+                  </Button>
+                )}
+                {notification.isRead && (
+                  <span className="text-sm text-gray-400 flex items-center gap-1">
+                    <FaEye className="w-3 h-3" />
+                    Read
+                  </span>
+                )}
+              </div>
+            </div>
           ))
         ) : (
           <Card className="p-8 text-center">

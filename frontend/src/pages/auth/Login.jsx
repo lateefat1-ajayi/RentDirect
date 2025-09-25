@@ -52,38 +52,15 @@ export default function Login() {
             position: "top-center"
           });
         } else {
-          // Email not confirmed - show clear message without auto-resending
-          toast.warning(err.response.data.message || "Please confirm your email first", {
-            duration: 8000,
+          // Email not confirmed - redirect to verification page
+          toast.warning("Please verify your email first", {
+            duration: 5000,
             position: "top-center"
           });
           
-          // Show a button to resend confirmation instead of auto-sending
-          setTimeout(() => {
-            toast.info(
-              <div className="flex items-center gap-2">
-                <span>Need a new confirmation email?</span>
-                <button
-                  onClick={async () => {
-                    try {
-                      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
-                      await axios.post(`${apiBase}/auth/resend-confirmation`, { email });
-                      toast.success("Confirmation email sent!");
-                    } catch (error) {
-                      toast.error("Failed to send confirmation email");
-                    }
-                  }}
-                  className="px-3 py-1 bg-teal-600 text-white text-sm rounded hover:bg-teal-700"
-                >
-                  Resend Email
-                </button>
-              </div>,
-              {
-                duration: 10000,
-                position: "top-center"
-              }
-            );
-          }, 2000);
+          // Store email and redirect to verification page
+          localStorage.setItem("pendingEmail", email);
+          navigate("/auth/verify-code", { state: { email } });
         }
       } else if (err.response?.status === 401) {
         toast.error("Invalid email or password");

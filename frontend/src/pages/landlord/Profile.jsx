@@ -4,7 +4,7 @@ import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import Avatar from "../../components/ui/Avatar";
-import { FaCamera, FaHome, FaEnvelope, FaPhone, FaShieldAlt, FaMoon, FaSun, FaPalette, FaKey } from "react-icons/fa";
+import { FaCamera, FaHome, FaEnvelope, FaPhone, FaShieldAlt, FaMoon, FaSun, FaPalette, FaKey, FaSync } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useOutletContext } from "react-router-dom";
 import { apiFetch } from "../../lib/api";
@@ -13,6 +13,17 @@ import useDarkMode from "../../hooks/useDarkMode";
 export default function LandlordProfile() {
   const navigate = useNavigate();
   const { profile, setProfile } = useOutletContext();
+
+  const refreshProfile = async () => {
+    try {
+      const updatedProfile = await apiFetch("/users/profile");
+      setProfile(updatedProfile);
+      toast.success("Profile refreshed successfully!");
+    } catch (error) {
+      console.error("Error refreshing profile:", error);
+      toast.error("Failed to refresh profile");
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -159,11 +170,24 @@ export default function LandlordProfile() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Role Indicator */}
-      <div className="flex justify-end">
-        <div className="flex items-center space-x-2">
-          <FaHome className="w-5 h-5 text-teal-600" />
-          <span className="text-sm text-teal-600 font-medium">Landlord</span>
+      {/* Header with Role Indicator and Refresh */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Profile</h1>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
+            <FaHome className="w-5 h-5 text-teal-600" />
+            <span className="text-sm text-teal-600 font-medium">Landlord</span>
+          </div>
+          <Button 
+            onClick={refreshProfile}
+            variant="outline"
+            size="sm"
+            className="p-2"
+            title="Refresh Profile"
+            aria-label="Refresh Profile"
+          >
+            <FaSync className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import { FaFileContract, FaCalendarAlt, FaUser, FaHome, FaMoneyBillWave, FaCheckCircle, FaClock, FaTimesCircle, FaFlag, FaDownload } from "react-icons/fa";
+import { FaFileContract, FaCalendarAlt, FaUser, FaHome, FaMoneyBillWave, FaCheckCircle, FaClock, FaTimesCircle, FaFlag, FaDownload, FaSync } from "react-icons/fa";
 import ReportIssueModal from "../../components/ui/ReportIssueModal";
 import { apiFetch } from "../../lib/api";
 import { toast } from "react-toastify";
@@ -224,16 +224,15 @@ export default function LandlordLeases() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Leases</h1>
-        <Button onClick={fetchLeases} variant="outline">
-          Refresh
+      <div className="flex justify-end items-center">
+        <Button onClick={fetchLeases} variant="outline" size="sm" className="p-2" title="Refresh Leases" aria-label="Refresh Leases">
+          <FaSync className="w-4 h-4" />
         </Button>
       </div>
 
       {leases.length === 0 ? (
         <Card className="p-8 text-center">
-          <FaFileContract className="text-gray-400 text-6xl mx-auto mb-4" />
+          <FaFileContract className="text-primary text-6xl mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             No Leases Found
           </h2>
@@ -246,14 +245,14 @@ export default function LandlordLeases() {
           {leases.map((lease) => (
             <Card
               key={lease._id}
-              className="p-4 rounded-none border border-gray-200 dark:border-gray-700 shadow-sm"
+              className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm"
             >
               <div className="flex flex-col gap-3">
                 {/* Header like applicants card */}
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex items-center gap-2">
-                    <FaFileContract className="text-blue-600" />
-                    <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                    <FaFileContract className="text-primary" />
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">
                       {lease.property?.title || "Property Title"}
                     </h3>
                   </div>
@@ -264,15 +263,15 @@ export default function LandlordLeases() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-gray-700 dark:text-gray-300">
                   <div className="space-y-0.5">
                     <p className="text-xs text-gray-500">Tenant</p>
-                    <p className="truncate">{lease.tenant?.name || "Tenant"}</p>
+                    <p className="truncate font-medium">{lease.tenant?.name || "Tenant"}</p>
                   </div>
                   <div className="space-y-0.5">
                     <p className="text-xs text-gray-500">Duration</p>
-                    <p className="truncate">{formatDate(lease.startDate)} → {formatDate(lease.endDate)}</p>
+                    <p className="truncate font-medium">{formatDate(lease.startDate)} → {formatDate(lease.endDate)}</p>
                   </div>
                   <div className="space-y-0.5">
                     <p className="text-xs text-gray-500">Rent</p>
-                    <p className="truncate">₦{lease.rentAmount?.toLocaleString() || "N/A"}</p>
+                    <p className="truncate font-medium">₦{lease.rentAmount?.toLocaleString() || "N/A"}</p>
                   </div>
                 </div>
 
@@ -280,7 +279,7 @@ export default function LandlordLeases() {
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
                   <button
                     type="button"
-                    className="text-sm text-teal-600 hover:underline bg-transparent p-0"
+                    className="text-sm font-semibold text-red-600 hover:text-red-700 hover:underline bg-transparent p-0"
                     onClick={() => {
                       setReportContext({ leaseId: lease._id, againstUser: lease.tenant, againstRole: 'tenant' });
                       setShowReportModal(true);
@@ -319,7 +318,7 @@ export default function LandlordLeases() {
       {/* Lease Details Modal */}
       {selectedLease && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Lease Details</h2>
               <button
@@ -332,7 +331,7 @@ export default function LandlordLeases() {
 
             <div className="space-y-4">
               {/* Property Information */}
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                   <FaHome className="text-blue-600" />
                   Property Information
@@ -350,7 +349,7 @@ export default function LandlordLeases() {
               </div>
 
               {/* Tenant Information */}
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                   <FaUser className="text-green-600" />
                   Tenant Information
@@ -374,9 +373,9 @@ export default function LandlordLeases() {
               </div>
 
               {/* Lease Terms */}
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                  <FaFileContract className="text-purple-600" />
+                  <FaFileContract className="text-primary" />
                   Lease Terms
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -412,7 +411,7 @@ export default function LandlordLeases() {
               </div>
 
               {/* Dates */}
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                   <FaCalendarAlt className="text-orange-600" />
                   Important Dates
@@ -430,32 +429,15 @@ export default function LandlordLeases() {
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-6 flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setSelectedLease(null)}>
                 Close
-              </Button>
-              <Button variant="outline" onClick={() => downloadLease(selectedLease._id)}>
-                Download Lease
               </Button>
               {!selectedLease.landlordSignatureUrl && (
                 <Button onClick={() => openSignatureModal(selectedLease)}>
                   Sign Lease
                 </Button>
               )}
-              {selectedLease.status === "pending" && (
-                <Button onClick={() => window.open(`/landlord/applicants`, "_blank")}>
-                  Review Application
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setReportContext({ leaseId: selectedLease._id, againstUser: selectedLease.tenant, againstRole: 'tenant' });
-                  setShowReportModal(true);
-                }}
-              >
-                Report Issue
-              </Button>
             </div>
           </div>
         </div>
@@ -464,13 +446,13 @@ export default function LandlordLeases() {
       {/* Signature Modal */}
       {showSignatureModal && selectedLease && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-3xl">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl w-full max-w-3xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Landlord Signature</h3>
               <button onClick={() => setShowSignatureModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">Draw your signature below or upload a signature image (PNG/JPG).</p>
-            <div className="border rounded-md bg-white overflow-hidden">
+            <div className="border rounded-lg bg-white overflow-hidden">
               <canvas
                 ref={canvasRef}
                 className="w-full h-[200px] touch-none"
