@@ -4,7 +4,7 @@ import Card from "../../components/ui/Card";
 import Modal from "../../components/ui/Modal";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
-import TextArea from "../../components/ui/TextArea";
+import TextArea from "../../components/ui/Textarea";
 import { apiFetch, apiUpload } from "../../lib/api";
 import { toast } from "react-toastify";
 import { FaMapMarkerAlt, FaLocationArrow, FaSearch, FaSync, FaShare } from "react-icons/fa";
