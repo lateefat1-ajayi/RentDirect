@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_URL || "https://rentdirect-uxsb.onrender.com";
 
 export async function apiFetch(endpoint, options = {}) {
   const token = localStorage.getItem("token"); // assuming token is stored here
