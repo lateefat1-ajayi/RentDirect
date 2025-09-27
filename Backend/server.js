@@ -36,7 +36,7 @@ const server = http.createServer(app);
 // Setup Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173" || "https://rentdirect-rd.netlify.app/",
+    origin: process.env.FRONTEND_URL || "https://rentdirect-rd.netlify.app/",
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -51,7 +51,7 @@ connectDB();
 // Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173" || "https://rentdirect-rd.netlify.app/",
+    origin: process.env.FRONTEND_URL || "https://rentdirect-rd.netlify.app/",
     credentials: true,
   })
 );
