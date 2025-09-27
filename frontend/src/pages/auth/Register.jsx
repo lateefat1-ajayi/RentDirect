@@ -70,7 +70,7 @@ export default function Register() {
     try {
       setLoading(true);
 
-      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const apiBase = import.meta.env.VITE_API_URL || "https://rentdirect-uxsb.onrender.com";
       console.log("Registering user with data:", { ...form, role });
       
       const { data } = await axios.post(

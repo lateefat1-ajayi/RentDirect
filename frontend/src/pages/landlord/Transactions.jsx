@@ -93,7 +93,7 @@ export default function LandlordTransactions() {
   const downloadReceipt = async (paymentId, reference) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/payments/${paymentId}/receipt`, { 
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://rentdirect-uxsb.onrender.com'}/payments/${paymentId}/receipt`, { 
         headers: token ? { Authorization: `Bearer ${token}` } : {} 
       });
       

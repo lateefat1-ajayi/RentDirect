@@ -19,7 +19,7 @@ export default function ResetPassword() {
     }
     setLoading(true);
     try {
-      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const apiBase = import.meta.env.VITE_API_URL || "https://rentdirect-uxsb.onrender.com";
       const res = await fetch(`${apiBase}/auth/reset-password/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

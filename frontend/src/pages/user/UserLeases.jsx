@@ -19,7 +19,7 @@ export default function UserLeases() {
   const isDrawingRef = useRef(false);
   const [hasDrawn, setHasDrawn] = useState(false);
   const fileInputRef = useRef(null);
-  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_BASE = import.meta.env.VITE_API_URL || "https://rentdirect-uxsb.onrender.com";
 
   useEffect(() => {
     fetchLeases();

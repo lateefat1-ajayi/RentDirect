@@ -9,7 +9,7 @@ import { FaCreditCard, FaCheckCircle, FaClock, FaTimesCircle, FaMoneyBillWave, F
 export default function UserPayments() {
   const [allPayments, setAllPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_BASE = import.meta.env.VITE_API_URL || "https://rentdirect-uxsb.onrender.com";
 
   useEffect(() => {
     fetchAllPayments();

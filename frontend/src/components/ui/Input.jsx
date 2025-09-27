@@ -17,7 +17,7 @@ export default function Input({
       {label && (
         <label
           htmlFor={name}
-          className="text-sm font-medium text-muted-foreground"
+          className="text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           {label}
         </label>
@@ -31,7 +31,7 @@ export default function Input({
         onChange={onChange}
         disabled={disabled}
         className={clsx(
-          "px-3 py-2 rounded-md border border-input bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100 disabled:cursor-not-allowed",
+          "px-3 py-2 rounded-md border border-input bg-white dark:bg-gray-700 text-sm text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed",
           error && "border-danger focus:ring-danger",
           className
         )}

@@ -11,7 +11,7 @@ export default function ConfirmEmail() {
   useEffect(() => {
     const confirm = async () => {
       try {
-        const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+        const apiBase = import.meta.env.VITE_API_URL || "https://rentdirect-uxsb.onrender.com";
         const res = await fetch(`${apiBase}/auth/confirm-email/${token}`);
         const data = await res.json();
         if (res.ok) {
