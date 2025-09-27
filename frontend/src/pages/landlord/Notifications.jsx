@@ -103,7 +103,7 @@ export default function LandlordNotifications() {
               className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-all ${
                 n.isRead 
                   ? 'bg-gray-50 dark:bg-gray-800' 
-                  : 'bg-white dark:bg-gray-700 border-l-4 border-l-primary'
+                  : 'bg-white dark:bg-gray-700'
               }`}
             >
               <div className={`p-1 sm:p-1.5 rounded-full ${
@@ -135,22 +135,21 @@ export default function LandlordNotifications() {
                   <span>{new Date(n.createdAt).toLocaleString()}</span>
                 </div>
               </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {!n.isRead && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMarkAsRead(n._id || n.id);
-                      }}
-                      className="p-1 text-primary hover:text-primary/80 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                      aria-label="Mark as read"
-                    >
-                      <FaCheck className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
+              
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                {!n.isRead && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMarkAsRead(n._id || n.id);
+                    }}
+                    className="p-1 text-primary hover:text-primary/80 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                    aria-label="Mark as read"
+                  >
+                    <FaCheck className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

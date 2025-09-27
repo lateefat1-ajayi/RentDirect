@@ -167,7 +167,7 @@ export default function AdminNotifications() {
               className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-all ${
                 notification.isRead 
                   ? 'bg-gray-50 dark:bg-gray-800' 
-                  : 'bg-white dark:bg-gray-700 border-l-4 border-l-primary'
+                  : 'bg-white dark:bg-gray-700'
               }`}
             >
               <div className={`p-1 sm:p-1.5 rounded-full ${

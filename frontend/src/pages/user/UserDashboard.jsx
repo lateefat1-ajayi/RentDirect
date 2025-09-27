@@ -210,7 +210,7 @@ export default function UserDashboard() {
                 <div key={notification._id || notification.id} className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
                   notification.isRead 
                     ? 'bg-gray-50 dark:bg-gray-800' 
-                    : 'bg-white dark:bg-gray-700 border-l-4 border-l-primary'
+                    : 'bg-white dark:bg-gray-700'
                 }`}>
                   <div className={`p-1.5 rounded-full ${
                     notification.type === 'application' ? 'bg-teal-100 dark:bg-teal-900' :
