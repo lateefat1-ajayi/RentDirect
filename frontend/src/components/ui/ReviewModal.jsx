@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
-import TextArea from "./TextArea";
+import TextArea from "./Textarea";
 import { FaStar, FaTimes } from "react-icons/fa";
 import { apiFetch } from "../../lib/api";
 import { toast } from "react-toastify";
